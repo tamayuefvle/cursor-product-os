@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/council.schema.json",
+  "title": "Decision Council Workspace",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "title",
+    "question",
+    "type",
+    "status",
+    "stage",
+    "impact",
+    "reversibility",
+    "evidence_quality",
+    "options",
+    "human_approval_required",
+    "confidence",
+    "members",
+    "triggers",
+    "external_advisor",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^DEC-[0-9]{4,}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1
+    },
+    "type": {
+      "enum": [
+        "product",
+        "strategy",
+        "ux",
+        "architecture",
+        "security",
+        "release",
+        "other"
+      ]
+    },
+    "status": {
+      "enum": [
+        "OPEN",
+        "SYNTHESIZED",
+        "VERIFIED",
+        "RECOMMENDED",
+        "RECORDED",
+        "CANCELLED"
+      ]
+    },
+    "stage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "impact": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "reversibility": {
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
+    },
+    "evidence_quality": {
+      "enum": [
+        "UNKNOWN",
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "options": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "human_approval_required": {
+      "type": "boolean"
+    },
+    "approval_action": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "confidence": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1
+    },
+    "members": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "problem-analyst",
+          "market-researcher",
+          "competitor-analyst",
+          "business-analyst",
+          "product-manager",
+          "ux-strategist",
+          "tech-lead",
+          "devils-advocate"
+        ]
+      }
+    },
+    "verifier": {
+      "const": "verifier"
+    },
+    "triggers": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "external_advisor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy",
+        "status"
+      ],
+      "properties": {
+        "policy": {
+          "enum": [
+            "AUTO",
+            "ALWAYS",
+            "NEVER"
+          ]
+        },
+        "status": {
+          "enum": [
+            "NOT_REQUESTED",
+            "AVAILABLE",
+            "UNAVAILABLE",
+            "SUCCESS",
+            "FAILED",
+            "BLOCKED_SENSITIVE",
+            "SKIPPED"
+          ]
+        },
+        "detail": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "last_attempt_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "final_decision": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "final_decision_path": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

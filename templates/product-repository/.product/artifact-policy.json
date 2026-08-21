@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "artifacts": {
+    "product/01-discovery/problem.md": {
+      "min_chars": 300,
+      "required_heading_groups": [
+        ["problem", "problem statement", "課題"],
+        ["target user", "user hypothesis", "対象ユーザー"],
+        ["alternatives", "workarounds", "代替手段"],
+        ["assumptions", "open questions", "仮説", "未解決"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 5
+    },
+    "product/01-discovery/evidence.md": {
+      "min_chars": 250,
+      "required_heading_groups": [
+        ["evidence", "evidence ledger", "根拠"],
+        ["sources", "source", "出典"],
+        ["gaps", "unknowns", "不足", "未確認"]
+      ],
+      "source_evidence": "required",
+      "max_placeholders": 5
+    },
+    "product/02-market/market.md": {
+      "min_chars": 350,
+      "required_heading_groups": [
+        ["market", "market context", "市場"],
+        ["signals", "evidence", "根拠", "シグナル"],
+        ["risks", "uncertainties", "リスク", "不確実"]
+      ],
+      "source_evidence": "required",
+      "max_placeholders": 5
+    },
+    "product/02-market/competitors.md": {
+      "min_chars": 350,
+      "required_heading_groups": [
+        ["competitors", "alternatives", "競合", "代替"],
+        ["comparison", "trade-offs", "比較", "差分"],
+        ["sources", "evidence", "出典", "根拠"]
+      ],
+      "source_evidence": "required",
+      "max_placeholders": 5
+    },
+    "product/03-users/jtbd.md": {
+      "min_chars": 250,
+      "required_heading_groups": [
+        ["job", "jtbd", "job to be done", "ジョブ"],
+        ["context", "situation", "状況"],
+        ["outcome", "desired outcome", "期待成果"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 5
+    },
+    "product/04-strategy/value-proposition.md": {
+      "min_chars": 250,
+      "required_heading_groups": [
+        ["target", "customer", "対象"],
+        ["value proposition", "value", "提供価値"],
+        ["differentiation", "alternative", "差別化", "代替"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 5
+    },
+    "product/05-product/prd.md": {
+      "min_chars": 700,
+      "required_heading_groups": [
+        ["problem", "課題"],
+        ["users", "jtbd", "ユーザー"],
+        ["goals", "目的", "ゴール"],
+        ["non-goals", "out of scope", "非対象"],
+        ["requirements", "要件"],
+        ["success metrics", "metrics", "成功指標"],
+        ["risks", "assumptions", "リスク", "仮説"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 8
+    },
+    "product/05-product/mvp-scope.md": {
+      "min_chars": 350,
+      "required_heading_groups": [
+        ["hypothesis", "検証仮説"],
+        ["in scope", "scope", "対象範囲"],
+        ["out of scope", "non-goals", "対象外"],
+        ["validation", "experiment", "検証"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 5
+    },
+    "product/06-ux/user-flow.md": {
+      "min_chars": 300,
+      "required_heading_groups": [
+        ["primary flow", "user flow", "主要フロー"],
+        ["edge", "failure", "exception", "例外"],
+        ["accessibility", "a11y", "アクセシビリティ"]
+      ],
+      "source_evidence": "none",
+      "max_placeholders": 5
+    },
+    "product/07-engineering/architecture.md": {
+      "min_chars": 500,
+      "required_heading_groups": [
+        ["context", "architecture context", "前提"],
+        ["components", "構成"],
+        ["data flow", "データフロー"],
+        ["trade-offs", "tradeoffs", "トレードオフ"],
+        ["alternatives", "rejected", "代替案"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 6
+    },
+    "product/07-engineering/security.md": {
+      "min_chars": 400,
+      "required_heading_groups": [
+        ["data", "assets", "データ", "資産"],
+        ["threat", "risk", "脅威", "リスク"],
+        ["authentication", "authorization", "auth", "認証", "認可"],
+        ["secrets", "privacy", "secret", "プライバシー", "機密"],
+        ["abuse", "rate limit", "misuse", "悪用"]
+      ],
+      "source_evidence": "recommended",
+      "max_placeholders": 6
+    },
+    "product/08-experiments/hypotheses.md": {
+      "min_chars": 250,
+      "required_heading_groups": [
+        ["hypothesis", "仮説"],
+        ["test", "experiment", "検証"],
+        ["decision", "判定"]
+      ],
+      "source_evidence": "none",
+      "max_placeholders": 5
+    },
+    "product/08-experiments/metrics.md": {
+      "min_chars": 250,
+      "required_heading_groups": [
+        ["metric", "metrics", "指標"],
+        ["baseline", "基準"],
+        ["target", "threshold", "目標", "閾値"]
+      ],
+      "source_evidence": "none",
+      "max_placeholders": 5
+    }
+  }
+}

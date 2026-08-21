@@ -1,0 +1,19 @@
+schema_version: 1
+id: IDEA-0000
+title: ""
+status: INBOX
+hypothesis:
+  user: ""
+  problem: ""
+  solution: ""
+confidence:
+  problem: 0.0
+  evidence: 0.0
+  differentiation: 0.0
+  feasibility: 0.0
+  overall: 0.0
+open_questions: []
+decision:
+  latest: null
+created_at: ""
+updated_at: ""

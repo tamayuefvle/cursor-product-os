@@ -1,0 +1,13 @@
+---
+description: Engineering and architecture rules for technical design, implementation, testing, security, and architecture decisions
+alwaysApply: false
+---
+# Engineering Rules
+
+- Do not choose implementation technology merely because it is familiar or fashionable.
+- Tie architecture decisions to product constraints, MVP scope, security, cost, operability, and reversibility.
+- Keep architecture proportional to the current stage.
+- Before non-trivial implementation, confirm `build.allowed: true` and use a reviewable implementation plan.
+- Prefer small, testable changes.
+- AI-generated code must remain explainable and maintainable by a human engineer.
+- Record high-impact or hard-to-reverse architecture decisions in `product/09-decisions/`.

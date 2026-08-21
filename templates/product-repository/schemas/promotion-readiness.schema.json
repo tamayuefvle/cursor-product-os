@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/promotion-readiness.schema.json",
+  "title": "Incubator Promotion Readiness",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "idea_id", "recommendation", "verifier", "human_approval", "updated_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "idea_id": { "type": "string", "pattern": "^IDEA-[0-9]{4,}$" },
+    "recommendation": { "enum": ["PROMOTE", "PARK", "KILL", "RESEARCH_MORE"] },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "blocking_gaps", "reviewed_at"],
+      "properties": {
+        "status": { "enum": ["PENDING", "PASS", "BLOCKED"] },
+        "blocking_gaps": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "reviewed_at": { "type": ["string", "null"] }
+      }
+    },
+    "human_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "approved_by", "approved_at", "decision_id"],
+      "properties": {
+        "status": { "enum": ["PENDING", "APPROVED", "REJECTED"] },
+        "approved_by": { "type": ["string", "null"] },
+        "approved_at": { "type": ["string", "null"] },
+        "decision_id": { "type": ["string", "null"], "pattern": "^DEC-[0-9]{4,}$" }
+      }
+    },
+    "product": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["id", "name", "repository_basename", "promoted_at"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "repository_basename": { "type": "string", "minLength": 1 },
+        "promoted_at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "updated_at": { "type": "string" }
+  }
+}

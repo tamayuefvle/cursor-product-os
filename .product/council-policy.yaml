@@ -1,0 +1,28 @@
+schema_version: 1
+
+decision_council:
+  confidence_below: 0.70
+  always_include:
+    - devils-advocate
+  verify_with: verifier
+  triggers:
+    - HIGH_IMPACT_LOW_REVERSIBILITY
+    - AGENT_DISAGREEMENT
+    - CONFLICTING_EVIDENCE
+    - HUMAN_GATED_TRANSITION
+    - EXPLICIT_HUMAN_REQUEST
+
+human_escalation:
+  confidence_below: 0.60
+  on_cursor_codex_disagreement_when_impact_high: true
+  on_high_impact_low_reversibility: true
+
+codex:
+  mode: AUTO
+  fail_open: true
+  timeout_ms: 120000
+  max_prompt_bytes: 65536
+  ephemeral: true
+  ignore_user_config: true
+  run_outside_repository: true
+  read_only: true

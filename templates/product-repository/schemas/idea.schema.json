@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/idea.schema.json",
+  "title": "Incubator Idea",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "title", "status", "hypothesis", "confidence", "open_questions", "decision", "created_at", "updated_at"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "id": { "type": "string", "pattern": "^IDEA-[0-9]{4,}$" },
+    "title": { "type": "string" },
+    "status": { "enum": ["INBOX", "FRAMING", "RESEARCHING", "EVALUATING", "PROMOTE", "PARK", "KILL"] },
+    "hypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["user", "problem", "solution"],
+      "properties": {
+        "user": { "type": "string" },
+        "problem": { "type": "string" },
+        "solution": { "type": "string" }
+      }
+    },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problem", "evidence", "differentiation", "feasibility", "overall"],
+      "properties": {
+        "problem": { "$ref": "#/$defs/score" },
+        "evidence": { "$ref": "#/$defs/score" },
+        "differentiation": { "$ref": "#/$defs/score" },
+        "feasibility": { "$ref": "#/$defs/score" },
+        "overall": { "$ref": "#/$defs/score" }
+      }
+    },
+    "open_questions": { "type": "array", "items": { "type": "string" } },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latest"],
+      "properties": { "latest": { "type": ["string", "null"] } }
+    },
+    "created_at": { "type": "string" },
+    "updated_at": { "type": "string" }
+  },
+  "$defs": { "score": { "type": "number", "minimum": 0, "maximum": 1 } }
+}

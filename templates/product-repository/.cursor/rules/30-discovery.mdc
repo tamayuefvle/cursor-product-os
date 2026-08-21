@@ -1,0 +1,13 @@
+---
+description: Discovery and research rules for incubator ideas, problem validation, market research, competitor analysis, and user hypotheses
+alwaysApply: false
+---
+# Discovery Rules
+
+- Start from user/problem hypotheses, not feature lists.
+- Investigate existing alternatives including manual workarounds and doing nothing.
+- Separate observed pain from assumed pain.
+- Seek disconfirming evidence, not only supporting evidence.
+- Personas generated without direct research are hypotheses only.
+- Market research must preserve sources and dates for externally sourced claims.
+- Discovery outputs should make uncertainty more explicit, not merely make the idea sound more polished.

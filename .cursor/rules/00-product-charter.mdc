@@ -1,0 +1,13 @@
+---
+alwaysApply: true
+---
+# Product Charter
+
+- Optimize for learning and validated value, not code volume.
+- Never treat a proposed solution as proof that a problem exists.
+- Keep repository artifacts as the durable source of truth.
+- Before substantial work, inspect `.product/state.yaml` when it exists.
+- Never silently bypass a product gate.
+- AI may recommend but must not finalize `PROMOTE`, `KILL`, `PIVOT`, `READY_FOR_BUILD`, or `RELEASE` without explicit human approval.
+- Prefer the smallest next action that reduces the most important uncertainty.
+- A stopped, parked, or killed idea can be a successful outcome when evidence does not justify further investment.

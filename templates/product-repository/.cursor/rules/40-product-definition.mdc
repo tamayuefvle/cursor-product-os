@@ -1,0 +1,11 @@
+---
+globs: "product/0[4-6]-*/**"
+alwaysApply: false
+---
+# Product Definition Rules
+
+- Every material requirement should trace to a user outcome, validated problem, business constraint, or explicit experiment.
+- PRDs must include goals, non-goals, assumptions, success metrics, risks, and open questions.
+- MVP scope must be the minimum scope that can test a named hypothesis; it is not a smaller version of the final imagined product.
+- Prefer user flows and observable outcomes over feature-count thinking.
+- Keep speculative future features outside MVP requirements unless they materially constrain a current irreversible decision.

@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/state.schema.json",
+  "title": "Product State",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "product", "current_gate", "confidence", "assumptions", "decisions", "build", "release"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "stage", "status"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "stage": { "enum": ["DISCOVERY", "STRATEGY", "DEFINITION", "DESIGN", "READY_FOR_BUILD", "BUILDING", "MVP_VALIDATION", "ITERATING", "GROWING", "PARKED", "PIVOTING", "TERMINATED"] },
+        "status": { "enum": ["ACTIVE", "PARKED", "TERMINATED"] }
+      }
+    },
+    "current_gate": { "type": "string", "pattern": "^G[0-9]+_[A-Z0-9_]+$" },
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problem", "opportunity", "solution", "feasibility"],
+      "properties": {
+        "problem": { "$ref": "#/$defs/score" },
+        "opportunity": { "$ref": "#/$defs/score" },
+        "solution": { "$ref": "#/$defs/score" },
+        "feasibility": { "$ref": "#/$defs/score" }
+      }
+    },
+    "assumptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical"],
+      "properties": {
+        "critical": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "statement", "status"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^ASM-[0-9]+$" },
+              "statement": { "type": "string", "minLength": 1 },
+              "status": { "enum": ["OPEN", "VALIDATED", "INVALIDATED", "DEFERRED"] }
+            }
+          }
+        }
+      }
+    },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latest"],
+      "properties": { "latest": { "type": ["string", "null"] } }
+    },
+    "build": { "$ref": "#/$defs/permission" },
+    "release": { "$ref": "#/$defs/permission" }
+  },
+  "$defs": {
+    "score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed"],
+      "properties": { "allowed": { "type": "boolean" } }
+    }
+  }
+}

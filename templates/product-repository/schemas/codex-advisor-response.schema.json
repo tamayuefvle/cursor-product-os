@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/codex-advisor-response.schema.json",
+  "title": "Codex Advisor Response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "recommended_option",
+    "supporting_argument",
+    "opposing_argument",
+    "hidden_assumptions",
+    "missing_evidence",
+    "overlooked_risks",
+    "confidence",
+    "change_evidence"
+  ],
+  "properties": {
+    "recommended_option": {
+      "type": "string",
+      "minLength": 1
+    },
+    "supporting_argument": {
+      "type": "string",
+      "minLength": 1
+    },
+    "opposing_argument": {
+      "type": "string",
+      "minLength": 1
+    },
+    "hidden_assumptions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "missing_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "overlooked_risks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "confidence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "change_evidence": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+---
+alwaysApply: true
+---
+# State and Gate Discipline
+
+Treat `.product/state.yaml` as the canonical machine-readable product state and `.product/gates.yaml` as the gate policy.
+
+Before recommending a stage transition:
+
+1. Identify the current gate.
+2. Check required artifacts.
+3. List unmet checks and open critical assumptions.
+4. State whether human approval is required.
+5. Never mutate `build.allowed` or `release.allowed` to `true` without the required human approval.
+
+Confidence scores are decision-support ratings, not calibrated probabilities.
+
+If product state and narrative documents disagree, report the inconsistency before proceeding.
+
+## Runtime enforcement
+
+- Do not directly edit or delete protected governance files when a Product OS CLI workflow exists.
+- `.product/state.yaml`, `.product/gates.yaml`, `.product/council-policy.yaml`, `.product/artifact-policy.json`, and `.cursor/hooks.json` are protected by Phase 8 project hooks from direct Agent Write/Delete operations.
+- Do not weaken, remove, bypass, or rewrite guardrails merely to make an operation succeed.
+- If a hook blocks an action, choose the approved Product OS workflow or request explicit human approval when the hook returns an approval boundary.

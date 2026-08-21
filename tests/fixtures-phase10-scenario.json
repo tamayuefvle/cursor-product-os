@@ -1,0 +1,20 @@
+{
+  "scenario_id": "PHASE10-SCENARIO-001",
+  "title": "Repository-native Product Decision Journal",
+  "target_user": "Small teams building web products with AI coding agents",
+  "problem": "Product decisions, evidence, and implementation context drift across chats, documents, issues, and code changes.",
+  "solution_hypothesis": "Keep product evidence, decisions, gates, and implementation context in the repository and make irreversible transitions human-gated.",
+  "decision": {
+    "question": "Should this idea be promoted from the Incubator into an independent Product Repository for deeper discovery?",
+    "options": ["PROMOTE", "PARK"],
+    "expected_internal_recommendation": "PROMOTE",
+    "expected_codex_recommendation": "PROMOTE",
+    "human_decision": "PROMOTE"
+  },
+  "expected_product_state": {
+    "stage": "DISCOVERY",
+    "current_gate": "G1_PROBLEM",
+    "build_allowed": false,
+    "release_allowed": false
+  }
+}

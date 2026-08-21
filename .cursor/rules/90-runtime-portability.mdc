@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+---
+# Runtime Portability
+
+This repository must work in both local Cursor and Cursor Cloud Agents.
+
+- Treat local executables and credentials as optional capabilities unless explicitly declared required.
+- Detect optional capability by attempting a safe availability check; do not infer it from host name or cloud/local labels.
+- Codex CLI is an optional external advisor, never a required dependency.
+- Failure of an optional advisor must not stop the core Product OS workflow.
+- Do not commit machine-specific capability state. Store it in `.product/capabilities.local.json`, which is gitignored.
+- Project-level command hooks should use repository-relative paths so they can run in Cloud Agents where supported.
+- Phase 8 project hooks are command-based and repository-relative so supported guardrails work in both local Cursor and Cloud Agents.
+- Hooks must not assume Codex CLI, GitHub CLI, or user-home configuration exists in Cloud.

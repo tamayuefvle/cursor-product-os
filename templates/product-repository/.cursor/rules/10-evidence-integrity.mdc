@@ -1,0 +1,16 @@
+---
+alwaysApply: true
+---
+# Evidence Integrity
+
+Classify material product claims as one of: FACT, EVIDENCE, ASSUMPTION, INFERENCE, or DECISION.
+
+- FACT must be directly observable or externally verifiable.
+- EVIDENCE must identify its origin and retrieval/observation date when external.
+- ASSUMPTION must remain explicitly open until validated.
+- INFERENCE must state which evidence supports it.
+- DECISION must record material trade-offs and, for major decisions, the conditions under which it should be revisited.
+
+Do not invent market sizes, user interviews, analytics, customer demand, competitor behavior, conversion rates, pricing willingness, or personas and present them as factual.
+
+When evidence is weak, say so and reduce confidence instead of filling gaps with plausible narrative.

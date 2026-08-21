@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/council-policy.schema.json",
+  "title": "Decision Council Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "decision_council",
+    "human_escalation",
+    "codex"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "decision_council": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confidence_below",
+        "always_include",
+        "verify_with",
+        "triggers"
+      ],
+      "properties": {
+        "confidence_below": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "always_include": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verify_with": {
+          "type": "string"
+        },
+        "triggers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "human_escalation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "confidence_below",
+        "on_cursor_codex_disagreement_when_impact_high",
+        "on_high_impact_low_reversibility"
+      ],
+      "properties": {
+        "confidence_below": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "on_cursor_codex_disagreement_when_impact_high": {
+          "type": "boolean"
+        },
+        "on_high_impact_low_reversibility": {
+          "type": "boolean"
+        }
+      }
+    },
+    "codex": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "fail_open",
+        "timeout_ms",
+        "max_prompt_bytes",
+        "ephemeral",
+        "ignore_user_config",
+        "run_outside_repository",
+        "read_only"
+      ],
+      "properties": {
+        "mode": {
+          "enum": [
+            "AUTO",
+            "ALWAYS",
+            "NEVER"
+          ]
+        },
+        "fail_open": {
+          "const": true
+        },
+        "timeout_ms": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 600000
+        },
+        "max_prompt_bytes": {
+          "type": "integer",
+          "minimum": 1024,
+          "maximum": 1048576
+        },
+        "ephemeral": {
+          "type": "boolean"
+        },
+        "ignore_user_config": {
+          "type": "boolean"
+        },
+        "run_outside_repository": {
+          "type": "boolean"
+        },
+        "read_only": {
+          "const": true
+        }
+      }
+    }
+  }
+}

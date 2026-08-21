@@ -1,0 +1,195 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/product-origin.schema.json",
+  "title": "Promoted Product Origin",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "product",
+    "source",
+    "promotion",
+    "decision_artifact",
+    "artifacts",
+    "mapped_artifacts",
+    "initial_state"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "product": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idea_id",
+        "idea_title",
+        "source_path",
+        "product_os_version"
+      ],
+      "properties": {
+        "idea_id": {
+          "type": "string",
+          "pattern": "^IDEA-[0-9]{4,}$"
+        },
+        "idea_title": {
+          "type": "string"
+        },
+        "source_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "product_os_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "promotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "approved_by",
+        "approved_at",
+        "decision_id"
+      ],
+      "properties": {
+        "approved_by": {
+          "type": "string",
+          "minLength": 1
+        },
+        "approved_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "decision_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^DEC-[0-9]{4,}$"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "sha256",
+          "bytes"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "sha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "mapped_artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "destination"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "destination": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "initial_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stage",
+        "current_gate",
+        "build_allowed",
+        "release_allowed"
+      ],
+      "properties": {
+        "stage": {
+          "const": "DISCOVERY"
+        },
+        "current_gate": {
+          "const": "G1_PROBLEM"
+        },
+        "build_allowed": {
+          "const": false
+        },
+        "release_allowed": {
+          "const": false
+        }
+      }
+    },
+    "decision_artifact": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "path",
+        "sha256",
+        "bytes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^DEC-[0-9]{4,}$"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

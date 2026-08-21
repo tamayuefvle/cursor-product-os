@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/artifact-policy.schema.json",
+  "title": "Product Artifact Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "artifacts"],
+  "properties": {
+    "version": { "const": 1 },
+    "artifacts": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["min_chars", "required_heading_groups", "source_evidence", "max_placeholders"],
+        "properties": {
+          "min_chars": { "type": "integer", "minimum": 1 },
+          "required_heading_groups": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          },
+          "source_evidence": { "enum": ["none", "recommended", "required"] },
+          "max_placeholders": { "type": "integer", "minimum": 0 }
+        }
+      }
+    }
+  }
+}

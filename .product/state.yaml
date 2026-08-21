@@ -1,0 +1,33 @@
+schema_version: 1
+
+product:
+  id: CURSOR-PRODUCT-OS
+  name: Cursor Product OS
+  stage: MVP_VALIDATION
+  status: ACTIVE
+
+current_gate: G5_RELEASE
+
+confidence:
+  problem: 0.90
+  opportunity: 0.85
+  solution: 0.90
+  feasibility: 0.95
+
+assumptions:
+  critical:
+    - id: ASM-001
+      statement: Repository-first product artifacts will keep long-running agent work more coherent than chat-only state.
+      status: OPEN
+    - id: ASM-002
+      statement: Optional local advisors can improve difficult decisions without becoming hard runtime dependencies.
+      status: OPEN
+
+decisions:
+  latest: DEC-0003
+
+build:
+  allowed: true
+
+release:
+  allowed: true

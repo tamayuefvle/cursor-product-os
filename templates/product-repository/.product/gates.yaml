@@ -1,0 +1,54 @@
+schema_version: 1
+policy:
+  human_approval_required_for: [PROMOTE, KILL, PIVOT, READY_FOR_BUILD, RELEASE]
+  confidence_is_probability: false
+gates:
+  - id: G0_IDEA
+    stage: DISCOVERY
+    purpose: Decide whether the idea deserves structured investigation.
+    human_approval: false
+    required_artifacts: [product/01-discovery/problem.md]
+    checks:
+      - A target user hypothesis exists.
+      - A problem hypothesis exists.
+      - The idea is framed without assuming the proposed solution is necessary.
+  - id: G1_PROBLEM
+    stage: DISCOVERY
+    purpose: Decide whether the problem deserves continued validation.
+    human_approval: false
+    required_artifacts: [product/01-discovery/problem.md, product/01-discovery/evidence.md, product/01-discovery/assumptions.md]
+    checks:
+      - Evidence and assumptions are explicitly separated.
+      - Existing alternatives or workarounds have been examined.
+      - Important evidence gaps are listed.
+  - id: G2_PROMOTE
+    stage: STRATEGY
+    purpose: Decide whether the product deserves continued strategic investment.
+    human_approval: true
+    approval_action: PROMOTE
+    required_artifacts: [product/02-market/market.md, product/02-market/competitors.md, product/04-strategy/value-proposition.md]
+    checks:
+      - Opportunity, alternatives, differentiation, and feasibility have been considered.
+  - id: G3_DEFINITION
+    stage: DEFINITION
+    purpose: Confirm that the product is defined enough to design.
+    human_approval: false
+    required_artifacts: [product/03-users/jtbd.md, product/04-strategy/value-proposition.md, product/05-product/prd.md]
+    checks:
+      - Outcomes, non-goals, metrics, assumptions, and risks are explicit.
+  - id: G4_BUILD
+    stage: READY_FOR_BUILD
+    purpose: Decide whether implementation should begin.
+    human_approval: true
+    approval_action: READY_FOR_BUILD
+    required_artifacts: [product/05-product/prd.md, product/05-product/mvp-scope.md, product/06-ux/user-flow.md, product/07-engineering/architecture.md, product/07-engineering/security.md]
+    checks:
+      - MVP scope tests a named hypothesis and major risks are understood.
+  - id: G5_RELEASE
+    stage: MVP_VALIDATION
+    purpose: Decide whether the MVP is safe and measurable enough for validation.
+    human_approval: true
+    approval_action: RELEASE
+    required_artifacts: [product/08-experiments/hypotheses.md, product/08-experiments/metrics.md]
+    checks:
+      - Critical flows, known risks, hypothesis, and metrics are ready.

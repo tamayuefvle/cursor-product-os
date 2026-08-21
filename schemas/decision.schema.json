@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cursor-product-os.local/schemas/decision.schema.json",
+  "title": "Decision Record Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "type",
+    "status",
+    "impact",
+    "reversibility",
+    "human_approval_required"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^DEC-[0-9]+$"
+    },
+    "type": {
+      "enum": [
+        "product",
+        "strategy",
+        "ux",
+        "architecture",
+        "security",
+        "release",
+        "other"
+      ]
+    },
+    "status": {
+      "enum": [
+        "PROPOSED",
+        "ACCEPTED",
+        "REJECTED",
+        "SUPERSEDED"
+      ]
+    },
+    "impact": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH"
+      ]
+    },
+    "reversibility": {
+      "enum": [
+        "HIGH",
+        "MEDIUM",
+        "LOW"
+      ]
+    },
+    "human_approval_required": {
+      "type": "boolean"
+    },
+    "human_approved": {
+      "type": "boolean"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "revisit_when": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "question": {
+      "type": "string"
+    },
+    "stage": {
+      "type": "string"
+    },
+    "decision": {
+      "type": "string"
+    },
+    "codex_status": {
+      "enum": [
+        "NOT_REQUESTED",
+        "AVAILABLE",
+        "UNAVAILABLE",
+        "SUCCESS",
+        "FAILED",
+        "BLOCKED_SENSITIVE",
+        "SKIPPED"
+      ]
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "approved_by": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}

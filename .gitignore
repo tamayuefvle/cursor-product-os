@@ -1,0 +1,5 @@
+node_modules/
+.product/capabilities.local.json
+*.log
+.DS_Store
+.product/runtime/

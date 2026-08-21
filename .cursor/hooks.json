@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "node .cursor/hooks/governance-guard.mjs",
+        "matcher": "Write|Delete",
+        "timeout": 5,
+        "failClosed": true
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "node .cursor/hooks/shell-guard.mjs",
+        "timeout": 5,
+        "failClosed": true
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "node .cursor/hooks/validate-state.mjs",
+        "matcher": "Write",
+        "timeout": 15
+      },
+      {
+        "command": "node .cursor/hooks/validate-artifact.mjs",
+        "matcher": "Write",
+        "timeout": 10
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": "node .cursor/hooks/validate-state.mjs --after-shell",
+        "matcher": "product-os|npm run po|product:",
+        "timeout": 15
+      }
+    ],
+    "stop": [
+      {
+        "command": "node .cursor/hooks/quality-stop.mjs",
+        "timeout": 10,
+        "loop_limit": 2
+      }
+    ]
+  }
+}

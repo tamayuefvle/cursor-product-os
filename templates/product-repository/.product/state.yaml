@@ -1,0 +1,20 @@
+schema_version: 1
+product:
+  id: PRODUCT-0001
+  name: New Product
+  stage: DISCOVERY
+  status: ACTIVE
+current_gate: G0_IDEA
+confidence:
+  problem: 0.0
+  opportunity: 0.0
+  solution: 0.0
+  feasibility: 0.0
+assumptions:
+  critical: []
+decisions:
+  latest: null
+build:
+  allowed: false
+release:
+  allowed: false

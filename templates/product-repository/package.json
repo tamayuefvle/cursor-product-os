@@ -1,0 +1,30 @@
+{
+  "name": "cursor-product-os",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Cursor-native operating system for web product discovery, definition, decisions, and controlled MVP delivery.",
+  "scripts": {
+    "po": "node scripts/product-os.mjs",
+    "product:doctor": "node scripts/product-os.mjs doctor",
+    "product:status": "node scripts/product-os.mjs status",
+    "product:validate": "node scripts/product-os.mjs validate",
+    "product:gate": "node scripts/product-os.mjs gate",
+    "test": "node --test tests/*.test.mjs",
+    "product:council": "node scripts/product-os.mjs council:status",
+    "product:codex-check": "node scripts/product-os.mjs codex:check",
+    "product:hooks": "node scripts/product-os.mjs hooks:status",
+    "product:ideas": "node scripts/product-os.mjs idea:status",
+    "product:promote": "node scripts/product-os.mjs promote",
+    "test:e2e": "node --test tests/product-repository-acceptance.test.mjs",
+    "test:offline": "node --test tests/phase10-offline.test.mjs tests/hooks-standalone.test.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.8.1"
+  }
+}

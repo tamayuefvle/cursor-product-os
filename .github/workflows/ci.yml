@@ -1,0 +1,37 @@
+name: Product OS CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'lab/**'
+      - 'experiment/**'
+      - 'hotfix/**'
+  pull_request:
+    branches:
+      - main
+      - 'lab/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Validate Product OS
+        run: npm run po -- validate
+
+      - name: Run tests
+        run: npm test

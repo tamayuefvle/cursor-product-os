@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Product OS Runtime Version",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "product_os"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "product_os": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kernel_version", "lab_version", "profile", "branch_role", "last_migration"],
+      "properties": {
+        "kernel_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "lab_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "profile": {"type": "string", "minLength": 1},
+        "branch_role": {"enum": ["STABLE", "EXPERIMENTAL"]},
+        "last_migration": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

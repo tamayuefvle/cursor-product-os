@@ -1,0 +1,39 @@
+schema_version: 1
+status: PROTECTED
+baseline: v1.0.0
+apply_policy: HUMAN_ONLY
+proposal_policy: AI_ALLOWED
+invariants:
+  - id: CONST-001
+    name: Repository Source of Truth
+    statement: Repository Artifacts are the durable Source of Truth.
+  - id: CONST-002
+    name: Evidence Integrity
+    statement: Fact, Evidence, Assumption, Inference, and Decision must remain distinct.
+  - id: CONST-003
+    name: Human Decision Boundary
+    statement: AI cannot finalize PROMOTE, KILL, PIVOT, READY_FOR_BUILD, or RELEASE.
+  - id: CONST-004
+    name: Promotion Boundary
+    statement: PROMOTE requires recommendation, Verifier PASS, required evidence, and human approval.
+  - id: CONST-005
+    name: Product Repository Boundary
+    statement: A promoted Product Repository starts at DISCOVERY / G1_PROBLEM with build and release blocked and remains independent from the Incubator.
+  - id: CONST-006
+    name: Optional External Advisors
+    statement: Codex and other external advisors are optional, isolated, and fail-open.
+  - id: CONST-007
+    name: Secret Protection
+    statement: Secrets and sensitive packets must be blocked before external transmission.
+  - id: CONST-008
+    name: Protected Governance
+    statement: Protected governance state cannot be directly mutated by ordinary Agent tools.
+  - id: CONST-009
+    name: Runtime Safety
+    statement: Catastrophic operations deny and destructive or high-impact operations require human approval policy.
+  - id: CONST-010
+    name: Framework Agnostic Core
+    statement: Product OS Core remains framework-agnostic.
+  - id: CONST-011
+    name: No Self Approval
+    statement: AI may propose governance weakening but may never approve or apply that weakening itself.

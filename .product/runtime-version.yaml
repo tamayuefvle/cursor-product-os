@@ -1,0 +1,7 @@
+schema_version: 1
+product_os:
+  kernel_version: 1.0.0
+  lab_version: 0.1.0
+  profile: vnext-foundation
+  branch_role: EXPERIMENTAL
+  last_migration: null

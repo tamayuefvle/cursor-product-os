@@ -1,0 +1,50 @@
+schema_version: 1
+lab:
+  enabled: true
+  profile: foundation
+capabilities:
+  - id: CAP-001
+    name: adaptive-reasoning
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-002
+    name: experience-learning
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-003
+    name: bounded-self-repair
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-004
+    name: research-intelligence
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-005
+    name: connected-intelligence
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-006
+    name: parallel-agent-runtime
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-007
+    name: continuous-operation
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-008
+    name: product-intelligence-ui
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false
+  - id: CAP-009
+    name: runtime-upgrade-migration
+    version: 0.1.0
+    state: EXPERIMENTAL
+    enabled: false

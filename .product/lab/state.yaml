@@ -1,0 +1,9 @@
+schema_version: 1
+lab:
+  status: ACTIVE
+  phase: PHASE_11_LAB_FOUNDATION
+  branch_role: EXPERIMENTAL
+  latest_decision: DEC-0006
+  latest_observation: OBS-0001
+  stable_kernel_decision: DEC-0003
+  stable_kernel_tag: v1.0.0

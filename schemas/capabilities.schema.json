@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "vNext Capability Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "lab", "capabilities"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "lab": {
+      "type": "object", "additionalProperties": false,
+      "required": ["enabled", "profile"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "profile": {"type": "string", "minLength": 1}
+      }
+    },
+    "capabilities": {
+      "type": "array", "minItems": 9, "maxItems": 9,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "name", "version", "state", "enabled"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^CAP-00[1-9]$"},
+          "name": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+          "state": {"enum": ["EXPERIMENTAL", "CANDIDATE", "ACCEPTED", "STABLE", "DEPRECATED"]},
+          "enabled": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}

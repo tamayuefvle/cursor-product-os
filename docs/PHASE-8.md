@@ -40,11 +40,14 @@ The guard does not prohibit humans from editing policy deliberately. It prevents
 
 Examples include filesystem-formatting commands, raw device writes, root/home recursive deletion, fork bombs, and system shutdown/reboot commands.
 
+- `gh repo create` without `--private`/`--internal`, and any GitHub/Origin command that sets PUBLIC visibility.
+
 ### Human approval (`ask`)
 
 Examples include:
 
-- `git reset --hard`, `git clean -f*`, force push, branch deletion;
+- `npm run po -- promote ...` and `npm run po -- visibility:set-public ...`;
+- `gh repo create --private` and other GitHub/Origin repository-creation commands;
 - destructive SQL such as `DROP DATABASE` / `TRUNCATE`;
 - infrastructure destroy operations;
 - destructive Kubernetes/Docker cleanup;

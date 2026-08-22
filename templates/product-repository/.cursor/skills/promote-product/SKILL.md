@@ -57,8 +57,9 @@ Optionally link the approval to an existing Decision Council record with `--deci
 6. Initializes the product at `DISCOVERY / G1_PROBLEM`.
 7. Keeps `build.allowed=false` and `release.allowed=false`.
 8. Initializes Git on branch `main` by default.
-9. Refuses to overwrite any existing destination.
+9. Writes `.product/visibility.yaml` as PRIVATE. PUBLIC is not implied and no hosting remote is created.
+10. Refuses to overwrite any existing destination.
 
-Promotion does not mean G1, G3, G4, or G5 has passed. Incubator evidence becomes inherited input that must still survive product-level scrutiny.
+Promotion does not mean G1, G3, G4, or G5 has passed. Promotion does not make the Product Repository PUBLIC. Incubator evidence becomes inherited input that must still survive product-level scrutiny.
 
 Do not choose a framework, hosting platform, database, or implementation stack during promotion.

@@ -35,6 +35,9 @@ const INCUBATOR_ROOT = resolve(ROOT, 'incubator');
 const INCUBATOR_IDEAS_ROOT = resolve(INCUBATOR_ROOT, 'ideas');
 const INCUBATOR_TEMPLATE_ROOT = resolve(INCUBATOR_ROOT, '_template');
 const PRODUCT_TEMPLATE_ROOT = resolve(ROOT, 'templates/product-repository');
+const VISIBILITY_PATH = resolve(ROOT, '.product/visibility.yaml');
+const CONSTITUTION_PATH = resolve(ROOT, '.product/constitution.yaml');
+const EMAIL_ALLOWLIST_DOMAINS = new Set(['example.com', 'example.org', 'example.net', 'localhost']);
 
 function nowIso() {
   return new Date().toISOString();
@@ -245,6 +248,129 @@ function slugify(value) {
 function pathIsInside(parent, child) {
   const rel = relative(resolve(parent), resolve(child));
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+}
+
+function pendingPublicApproval() {
+  return { status: 'PENDING', approved_by: null, approved_at: null, decision_id: null };
+}
+
+function defaultVisibility(kind) {
+  if (kind === 'PRODUCT_OS') {
+    return {
+      schema_version: 1,
+      repository_kind: 'PRODUCT_OS',
+      default_visibility: 'PUBLIC_ALLOWED',
+      current_visibility: 'UNDECLARED',
+      public_allowed: true,
+      promotion_implies_public: false,
+      public_requires_human_approval: true,
+      ai_may_set_public: false,
+      public_approval: pendingPublicApproval(),
+    };
+  }
+  return {
+    schema_version: 1,
+    repository_kind: 'PRODUCT',
+    default_visibility: 'PRIVATE',
+    current_visibility: 'PRIVATE',
+    public_allowed: false,
+    promotion_implies_public: false,
+    public_requires_human_approval: true,
+    ai_may_set_public: false,
+    public_approval: pendingPublicApproval(),
+  };
+}
+
+function visibilitySchemaPath() {
+  return resolve(ROOT, 'schemas/visibility.schema.json');
+}
+
+function loadVisibility() {
+  if (!existsSync(VISIBILITY_PATH)) throw new Error('Missing .product/visibility.yaml');
+  const data = readYaml(VISIBILITY_PATH);
+  if (!existsSync(visibilitySchemaPath())) return data;
+  const result = validateData(data, visibilitySchemaPath());
+  if (!result.ok) throw new Error(`visibility.yaml invalid: ${result.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
+  return data;
+}
+
+function saveVisibility(data) {
+  if (existsSync(visibilitySchemaPath())) {
+    const result = validateData(data, visibilitySchemaPath());
+    if (!result.ok) throw new Error(`visibility.yaml invalid: ${result.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
+  }
+  writeYaml(VISIBILITY_PATH, data);
+}
+
+function experienceDirs() {
+  if (existsSync(resolve(ROOT, '.product/lab'))) {
+    return {
+      raw: resolve(ROOT, '.product/lab/experience-raw'),
+      inbox: resolve(ROOT, '.product/lab/experience-inbox'),
+    };
+  }
+  return {
+    raw: resolve(ROOT, '.product/experience-raw'),
+    inbox: resolve(ROOT, '.product/experience-inbox'),
+  };
+}
+
+function privacyPatterns() {
+  return [
+    ['PRIVATE_KEY', /-----BEGIN [A-Z ]*PRIVATE KEY-----/i],
+    ['CERTIFICATE', /-----BEGIN CERTIFICATE-----/i],
+    ['OPENAI_KEY', /\bsk-[A-Za-z0-9_-]{20,}\b/],
+    ['GITHUB_TOKEN', /\bgh[pousr]_[A-Za-z0-9]{20,}\b/],
+    ['AWS_ACCESS_KEY', /\bAKIA[0-9A-Z]{16}\b/],
+    ['SLACK_TOKEN', /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/],
+    ['JWT', /\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/],
+    ['CREDENTIAL', /\b(password|passwd|secret|api[_-]?key|access[_-]?token|refresh[_-]?token)\b\s*[:=]\s*[^\s<]{8,}/i],
+    ['EMAIL', /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i],
+    ['GOV_ID', /\b\d{3}-\d{2}-\d{4}\b/],
+    ['CLIENT_RECORD', /\b(?:client[_ -]?data|customer[_ -]?pii|social security number)\b/i],
+    ['LOCAL_PATH', /\/(?:home|Users)\/[A-Za-z0-9._-]+\//],
+  ];
+}
+
+function isAllowlistedEmail(match) {
+  const domain = String(match.split('@')[1] || '').toLowerCase();
+  return EMAIL_ALLOWLIST_DOMAINS.has(domain);
+}
+
+function privacyMatches(text) {
+  const findings = [];
+  for (const [name, rx] of privacyPatterns()) {
+    const global = new RegExp(rx.source, rx.flags.includes('g') ? rx.flags : `${rx.flags}g`);
+    const hits = [...String(text || '').matchAll(global)].map((m) => m[0]);
+    const filtered = name === 'EMAIL' ? hits.filter((hit) => !isAllowlistedEmail(hit)) : hits;
+    if (filtered.length) findings.push({ type: name, count: filtered.length, samples: filtered.slice(0, 3) });
+  }
+  return findings;
+}
+
+function redactPrivacy(text) {
+  let out = String(text || '');
+  const redactions = [];
+  for (const [name, rx] of privacyPatterns()) {
+    const global = new RegExp(rx.source, rx.flags.includes('g') ? rx.flags : `${rx.flags}g`);
+    out = out.replace(global, (match) => {
+      if (name === 'EMAIL' && isAllowlistedEmail(match)) return match;
+      redactions.push(name);
+      return `[REDACTED:${name}]`;
+    });
+  }
+  const counts = {};
+  for (const type of redactions) counts[type] = (counts[type] || 0) + 1;
+  return { text: out, redactions: Object.entries(counts).map(([type, count]) => ({ type, count })) };
+}
+
+function requiredGitignoreChecks(text) {
+  return [
+    ['dotenv', /^\s*\.env(\.\*)?\s*$/m.test(text)],
+    ['capabilities-local', text.includes('.product/capabilities.local.json')],
+    ['experience-raw', text.includes('experience-raw')],
+    ['credentials', /credentials\.json|\.pem/.test(text)],
+  ];
 }
 
 function npmPackageName(value, fallback) {
@@ -559,13 +685,16 @@ function customizePromotedRepository(staging, id, idea, readiness, productName, 
     initial_state: { stage: 'DISCOVERY', current_gate: 'G1_PROBLEM', build_allowed: false, release_allowed: false },
   };
   writeYaml(resolve(staging, '.product/origin.yaml'), origin);
-  const report = `# Promotion origin\n\n- Source idea: **${id} — ${idea.title}**\n- Human approval: **${approvedBy}** at ${approvedAt}\n- Promotion decision: ${decisionId || 'not linked to a DEC record'}\n- Decision snapshot: ${decisionArtifact ? `\`${decisionArtifact.path}\`` : 'none'}\n- Initial stage: **DISCOVERY**\n- Initial gate: **G1_PROBLEM**\n- Build allowed: **false**\n- Release allowed: **false**\n\nIncubator artifacts are preserved byte-for-byte under \`product/00-origin/incubator/\`. Selected artifacts are also copied into Product Repository working locations with a provenance warning. Promotion does not imply later gates are passed.\n`;
+  writeYaml(resolve(staging, '.product/visibility.yaml'), defaultVisibility('PRODUCT'));
+  const report = `# Promotion origin\n\n- Source idea: **${id} — ${idea.title}**\n- Human approval: **${approvedBy}** at ${approvedAt}\n- Promotion decision: ${decisionId || 'not linked to a DEC record'}\n- Decision snapshot: ${decisionArtifact ? `\`${decisionArtifact.path}\`` : 'none'}\n- Initial stage: **DISCOVERY**\n- Initial gate: **G1_PROBLEM**\n- Build allowed: **false**\n- Release allowed: **false**\n- Visibility: **PRIVATE** (PUBLIC is a separate human-gated action; promotion does not create a remote)\n\nIncubator artifacts are preserved byte-for-byte under \`product/00-origin/incubator/\`. Selected artifacts are also copied into Product Repository working locations with a provenance warning. Promotion does not imply later gates are passed and does not imply PUBLIC visibility.\n`;
   writeFileSync(resolve(staging, 'product/00-origin/PROMOTION.md'), report, 'utf8');
 
   const stateValidation = validateYaml(statePath, resolve(ROOT, 'schemas/state.schema.json'));
   if (!stateValidation.ok) throw new Error(`promoted state failed schema validation: ${stateValidation.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
   const originValidation = validateYaml(resolve(staging, '.product/origin.yaml'), resolve(ROOT, 'schemas/product-origin.schema.json'));
   if (!originValidation.ok) throw new Error(`product origin failed schema validation: ${originValidation.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
+  const visibilityValidation = validateYaml(resolve(staging, '.product/visibility.yaml'), resolve(ROOT, 'schemas/visibility.schema.json'));
+  if (!visibilityValidation.ok) throw new Error(`product visibility failed schema validation: ${visibilityValidation.errors.map((e) => `${e.instancePath || '/'} ${e.message}`).join('; ')}`);
   for (const required of ['AGENTS.md', '.cursor/hooks.json', '.cursor/agents/problem-analyst.md', '.cursor/skills/intake-idea/SKILL.md', 'scripts/product-os.mjs']) {
     if (!existsSync(resolve(staging, required))) throw new Error(`promoted repository missing runtime file: ${required}`);
   }
@@ -629,6 +758,8 @@ function promoteIdea(id, flags) {
     console.log(`Initial gate: G1_PROBLEM`);
     console.log('Build:        BLOCKED until G4 + human approval');
     console.log('Release:      BLOCKED until G5 + human approval');
+    console.log('Visibility:   PRIVATE (PUBLIC is a separate human-gated action)');
+    console.log('Remote:       not created');
   } finally {
     if (!completed && existsSync(staging)) rmSync(staging, { recursive: true, force: true });
   }
@@ -1043,6 +1174,32 @@ function validateAll() {
     for (const error of decisions.errors) console.log(`  - ${error}`);
   }
 
+  const optionalContracts = [
+    [CONSTITUTION_PATH, resolve(ROOT, 'schemas/constitution.schema.json'), 'constitution'],
+    [resolve(ROOT, '.product/capabilities.yaml'), resolve(ROOT, 'schemas/capabilities.schema.json'), 'capabilities'],
+    [resolve(ROOT, '.product/runtime-version.yaml'), resolve(ROOT, 'schemas/runtime-version.schema.json'), 'runtime version'],
+    [VISIBILITY_PATH, visibilitySchemaPath(), 'visibility'],
+  ];
+  for (const [yamlPath, schemaPath, label] of optionalContracts) {
+    if (!existsSync(yamlPath) && !existsSync(schemaPath)) continue;
+    if (!existsSync(yamlPath) || !existsSync(schemaPath)) {
+      allOk = false;
+      console.log(`FAIL ${label}: missing file/schema`);
+      continue;
+    }
+    const result = validateYaml(yamlPath, schemaPath);
+    if (result.ok) console.log(`OK   ${label}`);
+    else {
+      allOk = false;
+      console.log(`FAIL ${label}`);
+      console.log(formatValidationErrors(result.errors));
+    }
+  }
+
+  if (existsSync(VISIBILITY_PATH)) {
+    if (!privacyCheck()) allOk = false;
+  }
+
   if (!allOk) process.exitCode = 1;
 }
 
@@ -1166,6 +1323,193 @@ function classifyCodexError(error) {
   if (/login|auth|unauthorized|401|token/.test(raw)) return 'authentication/runtime unavailable';
   if (error?.code === 'ENOENT') return 'codex executable not found';
   return 'codex execution failed';
+}
+
+function visibilityStatus() {
+  const visibility = loadVisibility();
+  console.log(`Repository:   ${visibility.repository_kind}`);
+  console.log(`Default:      ${visibility.default_visibility}`);
+  console.log(`Current:      ${visibility.current_visibility}`);
+  console.log(`Public allowed: ${visibility.public_allowed ? 'YES' : 'NO'}`);
+  console.log(`PROMOTE implies PUBLIC: ${visibility.promotion_implies_public}`);
+  console.log(`AI may set PUBLIC: ${visibility.ai_may_set_public}`);
+  console.log(`Human approval required: ${visibility.public_requires_human_approval}`);
+  console.log(`Public approval: ${visibility.public_approval.status}${visibility.public_approval.approved_by ? ` by ${visibility.public_approval.approved_by}` : ''}`);
+}
+
+function visibilitySetPublic(flags) {
+  if (flags['human-approved'] !== true) throw new Error('PUBLIC requires explicit --human-approved');
+  const approvedBy = requireString(flags, 'approved-by');
+  const visibility = loadVisibility();
+  if (visibility.ai_may_set_public !== false) throw new Error('ai_may_set_public must remain false');
+  if (visibility.repository_kind === 'PRODUCT' && visibility.promotion_implies_public !== false) {
+    throw new Error('promotion_implies_public must remain false');
+  }
+  const decisionCandidate = typeof flags['decision-id'] === 'string' ? flags['decision-id'] : null;
+  const decisionId = /^DEC-[0-9]{4,}$/.test(decisionCandidate || '') ? decisionCandidate : null;
+  visibility.current_visibility = 'PUBLIC';
+  visibility.public_allowed = true;
+  visibility.public_approval = {
+    status: 'APPROVED',
+    approved_by: approvedBy,
+    approved_at: nowIso(),
+    decision_id: decisionId,
+  };
+  saveVisibility(visibility);
+  console.log('PUBLIC policy recorded. Hosting remotes are not changed.');
+  console.log('AI must not run GitHub/Origin visibility commands; a human performs provider-side publication if desired.');
+}
+
+function readGitignore() {
+  const path = resolve(ROOT, '.gitignore');
+  if (!existsSync(path)) throw new Error('Missing .gitignore');
+  return readFileSync(path, 'utf8');
+}
+
+function privacyCheck() {
+  const errors = [];
+  const warnings = [];
+  if (!existsSync(VISIBILITY_PATH)) errors.push('missing .product/visibility.yaml');
+  else {
+    try {
+      const visibility = loadVisibility();
+      if (visibility.ai_may_set_public !== false) errors.push('ai_may_set_public must be false');
+      if (visibility.promotion_implies_public !== false) errors.push('promotion_implies_public must be false');
+      if (visibility.repository_kind === 'PRODUCT' && visibility.current_visibility === 'PUBLIC' && visibility.public_approval.status !== 'APPROVED') {
+        errors.push('PRODUCT PUBLIC visibility requires recorded human approval');
+      }
+    } catch (error) {
+      errors.push(error.message);
+    }
+  }
+
+  try {
+    const gitignore = readGitignore();
+    for (const [id, ok] of requiredGitignoreChecks(gitignore)) {
+      if (!ok) errors.push(`.gitignore missing required pattern: ${id}`);
+    }
+  } catch (error) {
+    errors.push(error.message);
+  }
+
+  const { inbox, raw } = experienceDirs();
+  if (existsSync(inbox)) {
+    for (const name of readdirSync(inbox)) {
+      if (name === 'README.md' || !name.endsWith('.md')) continue;
+      const path = resolve(inbox, name);
+      const findings = privacyMatches(readFileSync(path, 'utf8'));
+      if (findings.length) errors.push(`inbox is not repository-safe: ${name} (${findings.map((f) => f.type).join(', ')})`);
+    }
+  }
+  if (existsSync(raw)) warnings.push(`RAW experience directory present at ${relative(ROOT, raw)} (must stay gitignored)`);
+
+  console.log(`Privacy boundary: ${errors.length === 0 ? 'OK' : 'BLOCKED'}`);
+  for (const warning of warnings) console.log(`WARN ${warning}`);
+  for (const error of errors) console.log(`FAIL ${error}`);
+  if (errors.length) process.exitCode = 1;
+  return errors.length === 0;
+}
+
+function experienceScan(targetPath) {
+  if (!targetPath) throw new Error('experience:scan requires a file path');
+  const path = resolve(targetPath);
+  if (!existsSync(path)) throw new Error(`file not found: ${path}`);
+  const findings = privacyMatches(readFileSync(path, 'utf8'));
+  if (findings.length) {
+    console.log(`SCAN BLOCKED ${relative(ROOT, path)}`);
+    for (const finding of findings) console.log(`  - ${finding.type} (${finding.count})`);
+    process.exitCode = 1;
+    return { ok: false, findings };
+  }
+  console.log(`SCAN CLEAN ${relative(ROOT, path)}`);
+  return { ok: true, findings: [] };
+}
+
+function repositorySafeDocument(sourcePath, body, redactions) {
+  const metadata = {
+    schema_version: 1,
+    status: 'REPOSITORY_SAFE',
+    classification: 'GENERALIZED',
+    source_basename: basename(sourcePath),
+    scanned_at: nowIso(),
+    findings: [],
+    redactions,
+  };
+  return `---\n${YAML.stringify(metadata, { lineWidth: 0 }).trimEnd()}\n---\n\n# Repository-safe experience\n\nThis artifact passed Product OS privacy scan after redaction and generalization. It is not RAW experience and must not reintroduce credentials or private customer records.\n\n${body.trim()}\n`;
+}
+
+function defaultSafeOutputPath(sourcePath) {
+  const { inbox } = experienceDirs();
+  mkdirSync(inbox, { recursive: true });
+  const slug = slugify(basename(sourcePath, '.md')) || 'experience';
+  let dest = resolve(inbox, `EXP-SAFE-${slug}.md`);
+  let n = 2;
+  while (existsSync(dest)) {
+    dest = resolve(inbox, `EXP-SAFE-${slug}-${n}.md`);
+    n += 1;
+  }
+  return dest;
+}
+
+function experienceSanitize(targetPath, flags = {}) {
+  if (!targetPath) throw new Error('experience:sanitize requires a file path');
+  const path = resolve(targetPath);
+  if (!existsSync(path)) throw new Error(`file not found: ${path}`);
+  const raw = readFileSync(path, 'utf8');
+  const redacted = redactPrivacy(raw);
+  const remaining = privacyMatches(redacted.text);
+  if (remaining.length) {
+    console.error('SANITIZE BLOCKED: remaining sensitive findings after redaction');
+    for (const finding of remaining) console.error(`  - ${finding.type} (${finding.count})`);
+    process.exitCode = 1;
+    return { ok: false };
+  }
+  const outputPath = typeof flags.output === 'string' ? resolve(flags.output) : defaultSafeOutputPath(path);
+  const { raw: rawDir } = experienceDirs();
+  if (pathIsInside(rawDir, outputPath) && relative(rawDir, outputPath) !== '') {
+    throw new Error('refusing to write repository-safe output into experience-raw');
+  }
+  mkdirSync(dirname(outputPath), { recursive: true });
+  writeFileSync(outputPath, repositorySafeDocument(path, redacted.text, redacted.redactions), 'utf8');
+  const verify = privacyMatches(readFileSync(outputPath, 'utf8'));
+  if (verify.length) {
+    rmSync(outputPath, { force: true });
+    throw new Error(`refusing to keep output that still matches privacy patterns: ${verify.map((f) => f.type).join(', ')}`);
+  }
+  console.log(`SANITIZE OK ${relative(ROOT, outputPath)}`);
+  return { ok: true, outputPath };
+}
+
+function experienceIngest(targetPath, flags = {}) {
+  if (!targetPath) throw new Error('experience:ingest requires a file path');
+  const path = resolve(targetPath);
+  if (!existsSync(path)) throw new Error(`file not found: ${path}`);
+  const { raw: rawDir, inbox } = experienceDirs();
+  const parsed = parseFrontmatter(path);
+  const alreadySafe = parsed.error == null && parsed.data?.status === 'REPOSITORY_SAFE';
+  if (pathIsInside(rawDir, path) && !alreadySafe) {
+    const sanitized = experienceSanitize(path, flags);
+    if (!sanitized?.ok) throw new Error('RAW experience was not admitted to the inbox');
+    console.log('INGEST admitted sanitized experience; RAW file was not copied.');
+    return;
+  }
+  const findings = privacyMatches(readFileSync(path, 'utf8'));
+  if (findings.length) {
+    console.error('INGEST BLOCKED: file is not repository-safe');
+    for (const finding of findings) console.error(`  - ${finding.type} (${finding.count})`);
+    process.exitCode = 1;
+    return;
+  }
+  if (!alreadySafe) {
+    const sanitized = experienceSanitize(path, { output: flags.output });
+    if (!sanitized?.ok) throw new Error('experience ingest refused unsanitized input');
+    console.log('INGEST admitted after sanitize.');
+    return;
+  }
+  const dest = typeof flags.output === 'string' ? resolve(flags.output) : resolve(inbox, basename(path).startsWith('EXP-SAFE-') ? basename(path) : `EXP-SAFE-${basename(path)}`);
+  mkdirSync(dirname(dest), { recursive: true });
+  if (resolve(path) !== dest) writeFileSync(dest, readFileSync(path, 'utf8'), 'utf8');
+  console.log(`INGEST OK ${relative(ROOT, dest)}`);
 }
 
 function codexConsult(id) {
@@ -1318,7 +1662,7 @@ function recordCouncilDecision(id, flags) {
 }
 
 function help() {
-  console.log(`Cursor Product OS CLI\n\nUsage:\n  npm run po -- <command> [args]\n\nFoundation:\n  doctor                              Check required and optional runtime capabilities\n  status                              Show current product state\n  validate                            Validate schemas, customization, incubator, councils, and decisions\n  gate                                Show current gate requirements\n  hooks:status                        Show latest Phase 8 runtime guardrail results\n\nIncubator & Promotion (Phase 9):\n  idea:new --title <t> [--user <u>] [--problem <p>] [--solution <s>]\n  idea:status [IDEA-####]              List or inspect incubator ideas\n  promote:check IDEA-#### [--destination <path>]\n  promote IDEA-#### --destination <outside-path> [--name <product>] --human-approved --approved-by <human> [--decision-id DEC-####] [--product-id <id>] [--skip-git-init]\n\nDecision Council (Phase 6):\n  council:create --title <t> --question <q> --type <type> --impact <LOW|MEDIUM|HIGH> --reversibility <LOW|MEDIUM|HIGH> --option <a> --option <b>\n  council:status [DEC-####]            List or show council workspace status\n  council:validate DEC-####            Validate a council workspace\n  council:prepare-codex DEC-####       Assemble and secret-scan the Codex advisory packet\n  council:record DEC-#### --decision <option> [--human-approved --approved-by human]\n\nCodex Optional Advisor (Phase 7):\n  codex:check                          Detect local Codex CLI capability\n  codex:consult DEC-####               Run fail-open structured external review when usable\n\nNotes:\n  - Promotion requires a PROMOTE recommendation, verifier PASS, complete incubation artifacts, and explicit human approval.\n  - Promoted repositories start at DISCOVERY / G1_PROBLEM with build.allowed=false and release.allowed=false.\n  - Promotion never overwrites an existing destination and refuses destinations inside the Product OS repository.\n  - Git is initialized on main by default; use --skip-git-init only intentionally.\n  - Codex is optional. Any advisor failure continues the internal Cursor council.\n  - council:record never changes stage, build.allowed, or release.allowed.\n`);
+  console.log(`Cursor Product OS CLI\n\nUsage:\n  npm run po -- <command> [args]\n\nFoundation:\n  doctor                              Check required and optional runtime capabilities\n  status                              Show current product state\n  validate                            Validate schemas, customization, incubator, councils, and decisions\n  gate                                Show current gate requirements\n  hooks:status                        Show latest Phase 8 runtime guardrail results\n\nIncubator & Promotion (Phase 9):\n  idea:new --title <t> [--user <u>] [--problem <p>] [--solution <s>]\n  idea:status [IDEA-####]              List or inspect incubator ideas\n  promote:check IDEA-#### [--destination <path>]\n  promote IDEA-#### --destination <outside-path> [--name <product>] --human-approved --approved-by <human> [--decision-id DEC-####] [--product-id <id>] [--skip-git-init]\n\nPrivacy & Repository Boundary:\n  visibility:status                    Show repository visibility policy\n  visibility:set-public --human-approved --approved-by <human> [--decision-id DEC-####]\n  privacy:check                        Check gitignore, visibility, and inbox safety\n  experience:scan <file>               Scan a file for secrets/PII-like content\n  experience:sanitize <file> [--output <path>]\n  experience:ingest <file> [--output <path>]\n\nDecision Council (Phase 6):\n  council:create --title <t> --question <q> --type <type> --impact <LOW|MEDIUM|HIGH> --reversibility <LOW|MEDIUM|HIGH> --option <a> --option <b>\n  council:status [DEC-####]            List or show council workspace status\n  council:validate DEC-####            Validate a council workspace\n  council:prepare-codex DEC-####       Assemble and secret-scan the Codex advisory packet\n  council:record DEC-#### --decision <option> [--human-approved --approved-by human]\n\nCodex Optional Advisor (Phase 7):\n  codex:check                          Detect local Codex CLI capability\n  codex:consult DEC-####               Run fail-open structured external review when usable\n\nNotes:\n  - Promotion requires a PROMOTE recommendation, verifier PASS, complete incubation artifacts, and explicit human approval.\n  - Promoted repositories start at DISCOVERY / G1_PROBLEM with build.allowed=false and release.allowed=false.\n  - Promoted repositories are PRIVATE by default. PROMOTE does not imply PUBLIC and does not create a hosting remote.\n  - PUBLIC requires explicit --human-approved and does not call GitHub/Origin.\n  - RAW experience cannot be ingested; only repository-safe artifacts may enter git-tracked inbox paths.\n  - Promotion never overwrites an existing destination and refuses destinations inside the Product OS repository.\n  - Git is initialized on main by default; use --skip-git-init only intentionally.\n  - Codex is optional. Any advisor failure continues the internal Cursor council.\n  - council:record never changes stage, build.allowed, or release.allowed.\n`);
 }
 
 const command = process.argv[2] ?? 'help';
@@ -1333,6 +1677,12 @@ try {
   else if (command === 'idea:status') ideaStatus(parsed.positional[0]);
   else if (command === 'promote:check') promoteCheck(parsed.positional[0], parsed.flags);
   else if (command === 'promote') promoteIdea(parsed.positional[0], parsed.flags);
+  else if (command === 'visibility:status') visibilityStatus();
+  else if (command === 'visibility:set-public') visibilitySetPublic(parsed.flags);
+  else if (command === 'privacy:check') privacyCheck();
+  else if (command === 'experience:scan') experienceScan(parsed.positional[0]);
+  else if (command === 'experience:sanitize') experienceSanitize(parsed.positional[0], parsed.flags);
+  else if (command === 'experience:ingest') experienceIngest(parsed.positional[0], parsed.flags);
   else if (command === 'council:create') createCouncil(parsed.flags);
   else if (command === 'council:status') councilStatus(parsed.positional[0]);
   else if (command === 'council:update') updateCouncil(assertDecisionId(parsed.positional[0]), parsed.flags);

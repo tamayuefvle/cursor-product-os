@@ -1,0 +1,13 @@
+---
+description: Privacy and repository visibility boundary for Product OS and promoted Product Repositories
+alwaysApply: true
+---
+# Privacy and Repository Boundary
+
+- Product OS Core may be PUBLIC-operable. Do not commit secrets, PII, client data, `.env`, or credentials into it.
+- Product Repositories are PRIVATE by default. `PROMOTE` does not make a repository PUBLIC.
+- AI must not change Product Repository visibility to PUBLIC, including via `gh`, Origin, or direct edits to `.product/visibility.yaml`.
+- PUBLIC requires explicit human approval through `npm run po -- visibility:set-public --human-approved --approved-by <human>`. That command records policy only and does not create or alter a hosting remote.
+- RAW experience stays in gitignored `experience-raw/` paths. Scan and redact or generalize before writing to git-tracked inbox paths.
+- Do not copy client data from a private Product into Product OS. Store only repository-safe, generalized experience.
+- Never Git-manage `.env`, `.env.*` except `.env.example`, `credentials.json`, `*.pem`, or `.product/capabilities.local.json`.

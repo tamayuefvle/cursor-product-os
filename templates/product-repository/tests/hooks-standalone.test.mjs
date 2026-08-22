@@ -35,6 +35,12 @@ test('governance guard blocks direct Agent writes to protected state', () => {
   });
   assert.equal(denied.permission, 'deny');
 
+  const visibilityDenied = runHook('governance-guard.mjs', {
+    tool_name: 'Write',
+    tool_input: { file_path: resolve(root, '.product/visibility.yaml'), content: 'x' },
+  });
+  assert.equal(visibilityDenied.permission, 'deny');
+
   const allowed = runHook('governance-guard.mjs', {
     tool_name: 'Write',
     tool_input: { file_path: resolve(root, 'src/example.ts'), content: 'x' },
@@ -54,6 +60,9 @@ test('shell guard denies catastrophic commands, asks on consequential commands, 
 
   const promote = runHook('shell-guard.mjs', { command: 'npm run po -- promote IDEA-0001 --destination ../x --human-approved --approved-by human', cwd: root, sandbox: false });
   assert.equal(promote.permission, 'ask');
+
+  const publicCreate = runHook('shell-guard.mjs', { command: 'gh repo create my-product --public', cwd: root, sandbox: false });
+  assert.equal(publicCreate.permission, 'deny');
 
   const allowed = runHook('shell-guard.mjs', { command: 'npm test', cwd: root, sandbox: false });
   assert.equal(allowed.permission, 'allow');

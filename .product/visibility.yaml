@@ -1,0 +1,13 @@
+schema_version: 1
+repository_kind: PRODUCT_OS
+default_visibility: PUBLIC_ALLOWED
+current_visibility: UNDECLARED
+public_allowed: true
+promotion_implies_public: false
+public_requires_human_approval: true
+ai_may_set_public: false
+public_approval:
+  status: PENDING
+  approved_by: null
+  approved_at: null
+  decision_id: null

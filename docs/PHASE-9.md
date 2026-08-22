@@ -88,11 +88,16 @@ Open Incubator questions become initial OPEN critical assumptions. Product confi
 
 Git is initialized on `main` by default. Phase 9 does not create a GitHub/GitLab/Origin remote and does not commit, because remote choice and Git identity are separate human decisions.
 
+## Visibility
+
+Promoted Product Repositories are PRIVATE by default. `PROMOTE` does not grant PUBLIC visibility. PUBLIC is a separate human-gated action (`visibility:set-public`) and is not performed by Phase 9.
+
 ## Non-goals
 
 Phase 9 does not:
 
 - create a remote repository;
+- set repository visibility to PUBLIC;
 - choose a framework or cloud provider;
 - start implementation;
 - mark G1/G3/G4/G5 passed;

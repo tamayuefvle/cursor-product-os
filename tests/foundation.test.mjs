@@ -23,6 +23,7 @@ test('schema validation command succeeds', () => {
   assert.match(output, /OK\s+state/);
   assert.match(output, /OK\s+gates/);
   assert.match(output, /OK\s+idea template/);
+  assert.match(output, /Privacy boundary: OK/);
 });
 
 test('Phase 4 defines exactly nine read-only specialist subagents', async () => {

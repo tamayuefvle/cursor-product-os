@@ -79,6 +79,17 @@ test('Phase 9 promotes a ready idea into an independent guarded repository', () 
     assert.ok(origin.artifacts.length >= 8);
     assert.ok(origin.artifacts.every((item) => /^[a-f0-9]{64}$/.test(item.sha256)));
 
+    const visibility = YAML.parse(readFileSync(resolve(destination, '.product/visibility.yaml'), 'utf8'));
+    assert.equal(visibility.repository_kind, 'PRODUCT');
+    assert.equal(visibility.current_visibility, 'PRIVATE');
+    assert.equal(visibility.public_allowed, false);
+    assert.equal(visibility.promotion_implies_public, false);
+    assert.equal(visibility.ai_may_set_public, false);
+    assert.equal(visibility.public_approval.status, 'PENDING');
+    assert.match(readFileSync(resolve(destination, 'product/00-origin/PROMOTION.md'), 'utf8'), /Visibility: \*\*PRIVATE\*\*/);
+    assert.match(promoted, /Visibility:\s+PRIVATE/);
+    assert.match(promoted, /Remote:\s+not created/);
+
     const readiness = YAML.parse(readFileSync(resolve(fixture, 'incubator/ideas/IDEA-0001/promotion-readiness.yaml'), 'utf8'));
     assert.equal(readiness.human_approval.status, 'APPROVED');
     assert.equal(readiness.product.name, 'Test Product');

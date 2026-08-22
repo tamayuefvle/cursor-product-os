@@ -854,7 +854,7 @@ A Lab Skill graduates into Core only via an accepted migration decision.
 │       ├── evals/
 │       ├── experiments/
 │       ├── results/
-│       ├── experience-inbox/
+│       ├── experience-inbox/         # local-only bodies; README tracked
 │       └── runtime/                  # transient, gitignored where appropriate
 │
 ├── capabilities/

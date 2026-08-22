@@ -66,7 +66,7 @@ Repository visibility is a separate human boundary from those stage transitions:
 - `PROMOTE` does not make a repository PUBLIC.
 - AI must not change Product Repository visibility to PUBLIC.
 - PUBLIC requires explicit human approval via `npm run po -- visibility:set-public --human-approved --approved-by <human>`.
-- RAW experience, secrets, PII, and client data must not be committed to a public-operable Product OS path.
+- RAW experience, secrets, PII, client data, and Experience bodies (`LOCAL_SANITIZED` / legacy `REPOSITORY_SAFE`) must not be committed to a public-operable Product OS path. Public Lab artifacts are generalized observations and findings only.
 
 ## Delegation model
 

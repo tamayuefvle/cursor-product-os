@@ -36,7 +36,9 @@ test('vNext Phase 11 capability registry is isolated and disabled by default', (
 test('vNext Phase 11 records first dogfood observation and accepted architecture decisions', () => {
   assert.match(read('.product/lab/observations/OBS-0001-v1-reasoning-breadth.md'), /MISSED_PERSPECTIVE/);
   assert.match(read('.product/lab/observations/OBS-0002-privacy-repository-boundary.md'), /DEFECT/);
-  for (const id of ['DEC-0004','DEC-0005','DEC-0006','DEC-0007']) {
+  assert.match(read('.product/lab/observations/OBS-0003-discovery-continuation-after-falsification.md'), /PROCESS_GAP/);
+  assert.match(read('.product/lab/observations/OBS-0004-sanitization-does-not-establish-public-safety.md'), /DEFECT/);
+  for (const id of ['DEC-0004','DEC-0005','DEC-0006','DEC-0007','DEC-0008']) {
     const file = readdirSync(resolve(root, 'product/09-decisions')).find((name) => name.startsWith(`${id}-`));
     assert.ok(file, `${id} decision must exist`);
     const text = read(`product/09-decisions/${file}`);
@@ -44,7 +46,8 @@ test('vNext Phase 11 records first dogfood observation and accepted architecture
     assert.match(text, /human_approved: true/);
   }
   assert.match(read('.product/state.yaml'), /latest: DEC-0003/);
-  assert.match(read('.product/lab/state.yaml'), /latest_decision: DEC-0007/);
+  assert.match(read('.product/lab/state.yaml'), /latest_decision: DEC-0008/);
+  assert.match(read('.product/lab/state.yaml'), /latest_observation: OBS-0004/);
   assert.match(read('.product/lab/state.yaml'), /phase: PHASE_11_LAB_FOUNDATION/);
   assert.match(read('.product/constitution.yaml'), /apply_policy: HUMAN_ONLY/);
   assert.equal(read('.product/constitution.yaml').includes('CONST-012'), false, 'CONST-012 must remain a proposal');

@@ -17,12 +17,25 @@ function spawnCli(cwd, args) {
   return spawnSync(process.execPath, [CLI, ...args], { cwd, encoding: 'utf8' });
 }
 
+function git(cwd, args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+}
+
 function writeProductVisibility(dir) {
   mkdirSync(resolve(dir, '.product'), { recursive: true });
   mkdirSync(resolve(dir, 'schemas'), { recursive: true });
   writeFileSync(resolve(dir, '.product/visibility.yaml'), readFileSync(resolve(SOURCE_ROOT, 'templates/product-repository/.product/visibility.yaml')));
   writeFileSync(resolve(dir, 'schemas/visibility.schema.json'), readFileSync(resolve(SOURCE_ROOT, 'schemas/visibility.schema.json')));
   writeFileSync(resolve(dir, '.gitignore'), readFileSync(resolve(SOURCE_ROOT, 'templates/product-repository/.gitignore')));
+}
+
+function writeOsPrivacyHarness(dir) {
+  mkdirSync(resolve(dir, '.product/lab/experience-raw'), { recursive: true });
+  mkdirSync(resolve(dir, '.product/lab/experience-inbox'), { recursive: true });
+  mkdirSync(resolve(dir, 'schemas'), { recursive: true });
+  writeFileSync(resolve(dir, '.product/visibility.yaml'), readFileSync(resolve(SOURCE_ROOT, '.product/visibility.yaml')));
+  writeFileSync(resolve(dir, 'schemas/visibility.schema.json'), readFileSync(resolve(SOURCE_ROOT, 'schemas/visibility.schema.json')));
+  writeFileSync(resolve(dir, '.gitignore'), readFileSync(resolve(SOURCE_ROOT, '.gitignore')));
 }
 
 test('Phase 11 privacy boundary keeps Product OS public-operable and Product repos private by default', () => {
@@ -41,8 +54,11 @@ test('Phase 11 privacy boundary keeps Product OS public-operable and Product rep
   const gitignore = readFileSync(resolve(SOURCE_ROOT, '.gitignore'), 'utf8');
   assert.match(gitignore, /^\.env$/m);
   assert.match(gitignore, /experience-raw/);
+  assert.match(gitignore, /experience-inbox/);
   assert.match(gitignore, /credentials\.json/);
-  assert.match(readFileSync(resolve(SOURCE_ROOT, 'templates/product-repository/.gitignore'), 'utf8'), /^\.env$/m);
+  const templateGitignore = readFileSync(resolve(SOURCE_ROOT, 'templates/product-repository/.gitignore'), 'utf8');
+  assert.match(templateGitignore, /^\.env$/m);
+  assert.match(templateGitignore, /experience-inbox/);
 
   const check = run(SOURCE_ROOT, ['privacy:check']);
   assert.match(check, /Privacy boundary: OK/);
@@ -70,15 +86,10 @@ test('visibility:set-public requires human approval and does not call hosting pr
   }
 });
 
-test('experience scan/sanitize/ingest keep RAW secrets and PII out of the inbox', () => {
+test('experience scan/sanitize/ingest keep RAW secrets and PII out of the local inbox', () => {
   const temp = mkdtempSync(join(tmpdir(), 'product-os-experience-'));
   try {
-    mkdirSync(resolve(temp, '.product/lab/experience-raw'), { recursive: true });
-    mkdirSync(resolve(temp, '.product/lab/experience-inbox'), { recursive: true });
-    mkdirSync(resolve(temp, 'schemas'), { recursive: true });
-    writeFileSync(resolve(temp, '.product/visibility.yaml'), readFileSync(resolve(SOURCE_ROOT, '.product/visibility.yaml')));
-    writeFileSync(resolve(temp, 'schemas/visibility.schema.json'), readFileSync(resolve(SOURCE_ROOT, 'schemas/visibility.schema.json')));
-    writeFileSync(resolve(temp, '.gitignore'), readFileSync(resolve(SOURCE_ROOT, '.gitignore')));
+    writeOsPrivacyHarness(temp);
 
     const rawPath = resolve(temp, '.product/lab/experience-raw/client-note.md');
     writeFileSync(rawPath, [
@@ -97,12 +108,16 @@ test('experience scan/sanitize/ingest keep RAW secrets and PII out of the inbox'
 
     const sanitized = run(temp, ['experience:sanitize', rawPath]);
     assert.match(sanitized, /SANITIZE OK/);
-    const inboxFiles = readdirSync(resolve(temp, '.product/lab/experience-inbox')).filter((name) => name.startsWith('EXP-SAFE-'));
+    const inboxFiles = readdirSync(resolve(temp, '.product/lab/experience-inbox')).filter((name) => name.startsWith('EXP-LOCAL-'));
     assert.equal(inboxFiles.length, 1);
-    assert.match(inboxFiles[0], /^EXP-SAFE-[0-9a-f]{32}\.md$/);
+    assert.match(inboxFiles[0], /^EXP-LOCAL-[0-9a-f]{32}\.md$/);
     const safePath = resolve(temp, '.product/lab/experience-inbox', inboxFiles[0]);
     const safe = readFileSync(safePath, 'utf8');
-    assert.match(safe, /status: REPOSITORY_SAFE/);
+    assert.match(safe, /status: LOCAL_SANITIZED/);
+    assert.match(safe, /classification: PATTERN_REDACTED/);
+    assert.match(safe, /publication_allowed: false/);
+    assert.doesNotMatch(safe, /public_safe:/);
+    assert.doesNotMatch(safe, /status: REPOSITORY_SAFE/);
     assert.match(safe, /source_id: [0-9a-f]{32}/);
     assert.doesNotMatch(safe, /source_basename/);
     assert.doesNotMatch(safe, /client-note/);
@@ -113,7 +128,7 @@ test('experience scan/sanitize/ingest keep RAW secrets and PII out of the inbox'
 
     const ingestBlocked = spawnCli(temp, ['experience:ingest', rawPath]);
     assert.equal(ingestBlocked.status, 0, ingestBlocked.stderr);
-    assert.match(`${ingestBlocked.stdout}\n${ingestBlocked.stderr}`, /INGEST admitted sanitized experience; RAW file was not copied/);
+    assert.match(`${ingestBlocked.stdout}\n${ingestBlocked.stderr}`, /INGEST admitted local-sanitized experience; RAW file was not copied/);
     assert.match(readFileSync(rawPath, 'utf8'), /jane\.doe@clientcorp\.com/, 'RAW source must remain in the gitignored raw directory');
 
     const clean = run(temp, ['experience:scan', resolve(SOURCE_ROOT, '.env.example')]);
@@ -123,15 +138,10 @@ test('experience scan/sanitize/ingest keep RAW secrets and PII out of the inbox'
   }
 });
 
-test('sanitize/ingest do not persist RAW filenames or client identifiers into tracked artifacts', () => {
+test('sanitize/ingest do not persist RAW filenames or client identifiers into local artifacts', () => {
   const temp = mkdtempSync(join(tmpdir(), 'product-os-experience-name-'));
   try {
-    mkdirSync(resolve(temp, '.product/lab/experience-raw'), { recursive: true });
-    mkdirSync(resolve(temp, '.product/lab/experience-inbox'), { recursive: true });
-    mkdirSync(resolve(temp, 'schemas'), { recursive: true });
-    writeFileSync(resolve(temp, '.product/visibility.yaml'), readFileSync(resolve(SOURCE_ROOT, '.product/visibility.yaml')));
-    writeFileSync(resolve(temp, 'schemas/visibility.schema.json'), readFileSync(resolve(SOURCE_ROOT, 'schemas/visibility.schema.json')));
-    writeFileSync(resolve(temp, '.gitignore'), readFileSync(resolve(SOURCE_ROOT, '.gitignore')));
+    writeOsPrivacyHarness(temp);
 
     const rawName = 'Acme-Corp-jane.doe@clientcorp.com-interview.md';
     const rawPath = resolve(temp, '.product/lab/experience-raw', rawName);
@@ -149,18 +159,20 @@ test('sanitize/ingest do not persist RAW filenames or client identifiers into tr
 
     const ingest = spawnCli(temp, ['experience:ingest', rawPath]);
     assert.equal(ingest.status, 0, ingest.stderr);
-    assert.match(`${ingest.stdout}\n${ingest.stderr}`, /INGEST admitted sanitized experience; RAW file was not copied/);
+    assert.match(`${ingest.stdout}\n${ingest.stderr}`, /INGEST admitted local-sanitized experience; RAW file was not copied/);
 
     const inboxDir = resolve(temp, '.product/lab/experience-inbox');
-    const tracked = readdirSync(inboxDir).filter((name) => name !== 'README.md');
-    assert.ok(tracked.length >= 1);
-    for (const name of tracked) {
-      assert.match(name, /^EXP-SAFE-[0-9a-f]{32}\.md$/);
+    const localFiles = readdirSync(inboxDir).filter((name) => name !== 'README.md');
+    assert.ok(localFiles.length >= 1);
+    for (const name of localFiles) {
+      assert.match(name, /^EXP-LOCAL-[0-9a-f]{32}\.md$/);
+      assert.doesNotMatch(name, /^EXP-SAFE-/);
       assert.doesNotMatch(name, /Acme/i);
       assert.doesNotMatch(name, /jane/i);
       assert.doesNotMatch(name, /clientcorp/i);
       const artifact = readFileSync(resolve(inboxDir, name), 'utf8');
-      assert.match(artifact, /status: REPOSITORY_SAFE/);
+      assert.match(artifact, /status: LOCAL_SANITIZED/);
+      assert.match(artifact, /publication_allowed: false/);
       assert.doesNotMatch(artifact, /source_basename/);
       assert.doesNotMatch(artifact, /Acme-Corp-jane\.doe@clientcorp\.com-interview\.md/);
       assert.doesNotMatch(artifact, /jane\.doe@clientcorp\.com/);
@@ -181,10 +193,111 @@ test('sanitize/ingest do not persist RAW filenames or client identifiers into tr
     writeFileSync(resolve(inboxDir, 'EXP-SAFE-Acme-Corp-jane-doe-interview.md'), '---\nstatus: REPOSITORY_SAFE\n---\n\n# leak\n', 'utf8');
     const leaked = spawnCli(temp, ['privacy:check']);
     assert.notEqual(leaked.status, 0);
-    assert.match(`${leaked.stdout}\n${leaked.stderr}`, /inbox filename must be an opaque/);
+    assert.match(`${leaked.stdout}\n${leaked.stderr}`, /inbox filename must be EXP-LOCAL-/);
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
+});
+
+test('legacy REPOSITORY_SAFE / EXP-SAFE files remain readable locally', () => {
+  const temp = mkdtempSync(join(tmpdir(), 'product-os-experience-legacy-'));
+  try {
+    writeOsPrivacyHarness(temp);
+    const legacyId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+    const legacyName = `EXP-SAFE-${legacyId}.md`;
+    writeFileSync(resolve(temp, '.product/lab/experience-inbox', legacyName), [
+      '---',
+      'schema_version: 1',
+      'status: REPOSITORY_SAFE',
+      `source_id: ${legacyId}`,
+      '---',
+      '',
+      '# Legacy local experience',
+      '',
+      'Pattern-redacted local note with no secrets.',
+      '',
+    ].join('\n'), 'utf8');
+    const check = run(temp, ['privacy:check']);
+    assert.match(check, /Privacy boundary: OK/);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('privacy:check fails when a git repository tracks experience bodies', () => {
+  const temp = mkdtempSync(join(tmpdir(), 'product-os-experience-git-'));
+  try {
+    writeOsPrivacyHarness(temp);
+    writeFileSync(resolve(temp, '.product/lab/experience-inbox/README.md'), '# inbox\n');
+    const localId = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+    const localName = `EXP-LOCAL-${localId}.md`;
+    writeFileSync(resolve(temp, '.product/lab/experience-inbox', localName), [
+      '---',
+      'schema_version: 1',
+      'status: LOCAL_SANITIZED',
+      'classification: PATTERN_REDACTED',
+      'publication_allowed: false',
+      `source_id: ${localId}`,
+      '---',
+      '',
+      '# Local sanitized experience',
+      '',
+    ].join('\n'), 'utf8');
+
+    git(temp, ['init']);
+    git(temp, ['add', '.gitignore', '.product/visibility.yaml', 'schemas/visibility.schema.json', '.product/lab/experience-inbox/README.md']);
+    const untrackedCheck = run(temp, ['privacy:check']);
+    assert.match(untrackedCheck, /Privacy boundary: OK/);
+
+    git(temp, ['add', '-f', `.product/lab/experience-inbox/${localName}`]);
+    const tracked = spawnCli(temp, ['privacy:check']);
+    assert.notEqual(tracked.status, 0);
+    assert.match(`${tracked.stdout}\n${tracked.stderr}`, /experience body is git-tracked/);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('requiredGitignoreChecks fail when experience-inbox ignore is missing', () => {
+  const temp = mkdtempSync(join(tmpdir(), 'product-os-gitignore-inbox-'));
+  try {
+    writeOsPrivacyHarness(temp);
+    writeFileSync(resolve(temp, '.gitignore'), [
+      '.env',
+      '.product/capabilities.local.json',
+      'experience-raw',
+      'credentials.json',
+      '*.pem',
+      '',
+    ].join('\n'), 'utf8');
+    const missing = spawnCli(temp, ['privacy:check']);
+    assert.notEqual(missing.status, 0);
+    assert.match(`${missing.stdout}\n${missing.stderr}`, /experience-inbox/);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('Phase 11.2 observations stay generalized and omit private dogfood context', () => {
+  const obs3 = readFileSync(resolve(SOURCE_ROOT, '.product/lab/observations/OBS-0003-discovery-continuation-after-falsification.md'), 'utf8');
+  const obs4 = readFileSync(resolve(SOURCE_ROOT, '.product/lab/observations/OBS-0004-sanitization-does-not-establish-public-safety.md'), 'utf8');
+  const joined = `${obs3}\n${obs4}`;
+  assert.doesNotMatch(joined, /45/);
+  assert.doesNotMatch(joined, /Coloso/i);
+  assert.doesNotMatch(joined, /Udemy/i);
+  assert.doesNotMatch(joined, /IDEA-0001/);
+  assert.doesNotMatch(joined, /成就/);
+  assert.doesNotMatch(joined, /地力不足/);
+  assert.match(obs3, /Phase 11\.2 does not implement a Discovery stop-rule/);
+  assert.match(obs4, /publication-allowed/);
+});
+
+test('DEC-0008 does not authorize Constitution apply, Phase 12, merge, or Release', () => {
+  const text = readFileSync(resolve(SOURCE_ROOT, 'product/09-decisions/DEC-0008-privacy-semantics-hardening.md'), 'utf8');
+  assert.match(text, /Phase 11\.2 Privacy Semantics Hardening only/);
+  assert.match(text, /does not authorize Constitution apply/);
+  assert.match(text, /Lab phase remains `PHASE_11_LAB_FOUNDATION`/);
+  assert.match(readFileSync(resolve(SOURCE_ROOT, '.product/state.yaml'), 'utf8'), /latest: DEC-0003/);
 });
 
 test('Codex secret detector remains narrower than the experience privacy scanner', () => {

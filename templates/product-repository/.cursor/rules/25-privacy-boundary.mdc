@@ -8,6 +8,8 @@ alwaysApply: true
 - Product Repositories are PRIVATE by default. `PROMOTE` does not make a repository PUBLIC.
 - AI must not change Product Repository visibility to PUBLIC, including via `gh`, Origin, or direct edits to `.product/visibility.yaml`.
 - PUBLIC requires explicit human approval through `npm run po -- visibility:set-public --human-approved --approved-by <human>`. That command records policy only and does not create or alter a hosting remote.
-- RAW experience stays in gitignored `experience-raw/` paths. Scan and redact or generalize before writing to git-tracked inbox paths.
-- Do not copy client data from a private Product into Product OS. Store only repository-safe, generalized experience.
+- RAW experience stays in gitignored `experience-raw/` paths.
+- Automated sanitize produces `LOCAL_SANITIZED` experience (`classification: PATTERN_REDACTED`, `publication_allowed: false`) in gitignored `experience-inbox/` paths. Pattern-clean is not publication permission.
+- Do not commit Experience bodies (`EXP-LOCAL-*`, legacy `EXP-SAFE-*`, or other inbox markdown besides README). `privacy:check` fails if those files are git-tracked.
+- Do not copy client data or private semantic context from a private Product into Public Product OS. Public durable artifacts are generalized observations and findings only.
 - Never Git-manage `.env`, `.env.*` except `.env.example`, `credentials.json`, `*.pem`, or `.product/capabilities.local.json`.

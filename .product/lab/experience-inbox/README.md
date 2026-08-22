@@ -1,10 +1,22 @@
 # experience-inbox
 
-Git-tracked Lab inbox for **repository-safe** experience only.
+Local-only inbox for **pattern-redacted** experience. This directory is gitignored except this README.
 
-Admission rule: `status: REPOSITORY_SAFE` after scan and redaction/generalization. RAW files, secrets, PII, client data, and RAW filenames are rejected.
+Admission after `po experience:scan` / `po experience:sanitize` / `po experience:ingest`:
 
-Tracked artifacts use an opaque `source_id` and filename `EXP-SAFE-<32-hex>.md`. They must not store the RAW basename. Local RAW filename mapping, if needed, stays only under gitignored `experience-raw/`.
+```yaml
+status: LOCAL_SANITIZED
+classification: PATTERN_REDACTED
+publication_allowed: false
+```
+
+New files use an opaque `source_id` and filename `EXP-LOCAL-<32-hex>.md`. They must not store the RAW basename. Local RAW filename mapping, if needed, stays only under gitignored `experience-raw/`.
+
+Legacy `status: REPOSITORY_SAFE` and `EXP-SAFE-<32-hex>.md` remain readable locally. New output must not use those names.
+
+`LOCAL_SANITIZED` means pattern redaction passed. It does **not** mean the artifact may be committed to Public Product OS. Semantic private context can survive pattern scan. Public durable artifacts are generalized observations and findings only.
+
+`po experience:ingest` is a boundary gate, not a learning engine. It does not create Findings or change Core behavior.
 
 Use:
 
@@ -13,5 +25,3 @@ npm run po -- experience:scan <raw-file>
 npm run po -- experience:sanitize <raw-file>
 npm run po -- experience:ingest <safe-or-raw-file>
 ```
-
-`experience:ingest` is a boundary gate, not a learning engine. It does not create Findings or change Core behavior.

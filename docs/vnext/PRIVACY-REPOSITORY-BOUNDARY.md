@@ -71,7 +71,7 @@ Private / local experience
    generalized OBS / FIND   (git-tracked)
 ```
 
-`po experience:ingest` is a gate, not a learning engine. It refuses RAW, unsanitized, or still pattern-sensitive content. Admission is local-only.
+`po experience:ingest` is a gate, not a learning engine. It refuses RAW, unsanitized, or still pattern-sensitive content. Admission is local-only. Legacy `REPOSITORY_SAFE` / `EXP-SAFE-*` files are accepted read-only and must not be rewritten, renamed, or copied.
 
 ## What this change does not do
 

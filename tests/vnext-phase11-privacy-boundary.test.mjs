@@ -205,7 +205,9 @@ test('legacy REPOSITORY_SAFE / EXP-SAFE files remain readable locally', () => {
     writeOsPrivacyHarness(temp);
     const legacyId = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
     const legacyName = `EXP-SAFE-${legacyId}.md`;
-    writeFileSync(resolve(temp, '.product/lab/experience-inbox', legacyName), [
+    const inboxDir = resolve(temp, '.product/lab/experience-inbox');
+    const legacyPath = resolve(inboxDir, legacyName);
+    const legacyBody = [
       '---',
       'schema_version: 1',
       'status: REPOSITORY_SAFE',
@@ -216,9 +218,23 @@ test('legacy REPOSITORY_SAFE / EXP-SAFE files remain readable locally', () => {
       '',
       'Pattern-redacted local note with no secrets.',
       '',
-    ].join('\n'), 'utf8');
+    ].join('\n');
+    writeFileSync(legacyPath, legacyBody, 'utf8');
     const check = run(temp, ['privacy:check']);
     assert.match(check, /Privacy boundary: OK/);
+
+    const ingest = spawnCli(temp, ['experience:ingest', legacyPath]);
+    assert.equal(ingest.status, 0, ingest.stderr);
+    assert.match(`${ingest.stdout}\n${ingest.stderr}`, /INGEST OK \(legacy read-only\)/);
+    assert.equal(readFileSync(legacyPath, 'utf8'), legacyBody);
+    const inboxFiles = readdirSync(inboxDir).filter((name) => name !== 'README.md');
+    assert.deepEqual(inboxFiles, [legacyName]);
+    assert.equal(readdirSync(inboxDir).some((name) => name.startsWith('EXP-LOCAL-')), false);
+
+    const rewrite = spawnCli(temp, ['experience:ingest', legacyPath, '--output', resolve(inboxDir, `EXP-LOCAL-${legacyId}.md`)]);
+    assert.notEqual(rewrite.status, 0);
+    assert.match(`${rewrite.stdout}\n${rewrite.stderr}`, /legacy REPOSITORY_SAFE \/ EXP-SAFE-\* ingest is read-only/);
+    assert.deepEqual(readdirSync(inboxDir).filter((name) => name !== 'README.md'), [legacyName]);
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }

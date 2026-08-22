@@ -51,4 +51,11 @@ test('vNext Phase 11 records first dogfood observation and accepted architecture
   assert.match(read('.product/lab/state.yaml'), /phase: PHASE_11_LAB_FOUNDATION/);
   assert.match(read('.product/constitution.yaml'), /apply_policy: HUMAN_ONLY/);
   assert.equal(read('.product/constitution.yaml').includes('CONST-012'), false, 'CONST-012 must remain a proposal');
+  const proposal = read('.product/lab/proposals/CONST-012-privacy-repository-boundary.md');
+  assert.match(proposal, /status: PROPOSED/);
+  assert.match(proposal, /LOCAL_SANITIZED/);
+  assert.match(proposal, /publication_allowed: false/);
+  assert.match(proposal, /Experience bodies are not Public Product OS durable artifacts/);
+  assert.match(proposal, /pattern-clean is not publication permission/);
+  assert.doesNotMatch(proposal, /Experience copied from a private Product into Product OS must be scanned and redacted or generalized so that secrets, PII, and client data are not stored in the public-operable repository/);
 });

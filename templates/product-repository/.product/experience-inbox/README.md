@@ -6,4 +6,4 @@ New artifacts use `status: LOCAL_SANITIZED`, `classification: PATTERN_REDACTED`,
 
 Pattern-clean is not publication permission. Do not git-track Experience bodies. Public durable artifacts are generalized observations and findings only.
 
-Legacy `REPOSITORY_SAFE` / `EXP-SAFE-*` files remain readable locally.
+Legacy `REPOSITORY_SAFE` / `EXP-SAFE-*` files remain readable locally. `experience:ingest` accepts them read-only and must not rewrite, rename, or copy them.

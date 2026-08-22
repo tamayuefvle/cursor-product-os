@@ -423,6 +423,10 @@ function isAdmittedExperienceStatus(status) {
   return status === 'LOCAL_SANITIZED' || status === 'REPOSITORY_SAFE';
 }
 
+function isLegacyExperienceArtifact(parsed, name) {
+  return parsed?.data?.status === 'REPOSITORY_SAFE' || isLegacyExperienceFilename(name);
+}
+
 function npmPackageName(value, fallback) {
   const candidate = String(value).toLowerCase().normalize('NFKD').replace(/[^a-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 100);
   return candidate && candidate !== 'decision' ? candidate : fallback;
@@ -1589,6 +1593,23 @@ function experienceIngest(targetPath, flags = {}) {
   const { raw: rawDir } = experienceDirs();
   const parsed = parseFrontmatter(path);
   const alreadyAdmitted = parsed.error == null && isAdmittedExperienceStatus(parsed.data?.status);
+  if (alreadyAdmitted && isLegacyExperienceArtifact(parsed, basename(path))) {
+    const findings = privacyMatches(readFileSync(path, 'utf8'));
+    if (findings.length) {
+      console.error('INGEST BLOCKED: file is not pattern-redacted');
+      for (const finding of findings) console.error(`  - ${finding.type} (${finding.count})`);
+      process.exitCode = 1;
+      return;
+    }
+    if (parsed.data && Object.hasOwn(parsed.data, 'source_basename')) {
+      throw new Error('INGEST BLOCKED: local-sanitized artifacts must not carry RAW basename');
+    }
+    if (typeof flags.output === 'string' && resolve(flags.output) !== path) {
+      throw new Error('INGEST BLOCKED: legacy REPOSITORY_SAFE / EXP-SAFE-* ingest is read-only and must not write new output');
+    }
+    console.log(`INGEST OK (legacy read-only) ${relative(ROOT, path)}`);
+    return;
+  }
   if (pathIsInside(rawDir, path) && !alreadyAdmitted) {
     const sanitized = experienceSanitize(path, flags);
     if (!sanitized?.ok) throw new Error('RAW experience was not admitted to the inbox');
@@ -1770,7 +1791,7 @@ function recordCouncilDecision(id, flags) {
 }
 
 function help() {
-  console.log(`Cursor Product OS CLI\n\nUsage:\n  npm run po -- <command> [args]\n\nFoundation:\n  doctor                              Check required and optional runtime capabilities\n  status                              Show current product state\n  validate                            Validate schemas, customization, incubator, councils, and decisions\n  gate                                Show current gate requirements\n  hooks:status                        Show latest Phase 8 runtime guardrail results\n\nIncubator & Promotion (Phase 9):\n  idea:new --title <t> [--user <u>] [--problem <p>] [--solution <s>]\n  idea:status [IDEA-####]              List or inspect incubator ideas\n  promote:check IDEA-#### [--destination <path>]\n  promote IDEA-#### --destination <outside-path> [--name <product>] --human-approved --approved-by <human> [--decision-id DEC-####] [--product-id <id>] [--skip-git-init]\n\nPrivacy & Repository Boundary:\n  visibility:status                    Show repository visibility policy\n  visibility:set-public --human-approved --approved-by <human> [--decision-id DEC-####]\n  privacy:check                        Check gitignore, visibility, and inbox safety\n  experience:scan <file>               Scan a file for secrets/PII-like content\n  experience:sanitize <file> [--output <path>]\n  experience:ingest <file> [--output <path>]\n\nDecision Council (Phase 6):\n  council:create --title <t> --question <q> --type <type> --impact <LOW|MEDIUM|HIGH> --reversibility <LOW|MEDIUM|HIGH> --option <a> --option <b>\n  council:status [DEC-####]            List or show council workspace status\n  council:validate DEC-####            Validate a council workspace\n  council:prepare-codex DEC-####       Assemble and secret-scan the Codex advisory packet\n  council:record DEC-#### --decision <option> [--human-approved --approved-by human]\n\nCodex Optional Advisor (Phase 7):\n  codex:check                          Detect local Codex CLI capability\n  codex:consult DEC-####               Run fail-open structured external review when usable\n\nNotes:\n  - Promotion requires a PROMOTE recommendation, verifier PASS, complete incubation artifacts, and explicit human approval.\n  - Promoted repositories start at DISCOVERY / G1_PROBLEM with build.allowed=false and release.allowed=false.\n  - Promoted repositories are PRIVATE by default. PROMOTE does not imply PUBLIC and does not create a hosting remote.\n  - PUBLIC requires explicit --human-approved and does not call GitHub/Origin.\n  - RAW experience cannot be ingested. Sanitized experience is local-only (LOCAL_SANITIZED; publication_allowed: false) and must not be git-tracked. Legacy REPOSITORY_SAFE / EXP-SAFE-* files remain readable locally.\n  - Promotion never overwrites an existing destination and refuses destinations inside the Product OS repository.\n  - Git is initialized on main by default; use --skip-git-init only intentionally.\n  - Codex is optional. Any advisor failure continues the internal Cursor council.\n  - council:record never changes stage, build.allowed, or release.allowed.\n`);
+  console.log(`Cursor Product OS CLI\n\nUsage:\n  npm run po -- <command> [args]\n\nFoundation:\n  doctor                              Check required and optional runtime capabilities\n  status                              Show current product state\n  validate                            Validate schemas, customization, incubator, councils, and decisions\n  gate                                Show current gate requirements\n  hooks:status                        Show latest Phase 8 runtime guardrail results\n\nIncubator & Promotion (Phase 9):\n  idea:new --title <t> [--user <u>] [--problem <p>] [--solution <s>]\n  idea:status [IDEA-####]              List or inspect incubator ideas\n  promote:check IDEA-#### [--destination <path>]\n  promote IDEA-#### --destination <outside-path> [--name <product>] --human-approved --approved-by <human> [--decision-id DEC-####] [--product-id <id>] [--skip-git-init]\n\nPrivacy & Repository Boundary:\n  visibility:status                    Show repository visibility policy\n  visibility:set-public --human-approved --approved-by <human> [--decision-id DEC-####]\n  privacy:check                        Check gitignore, visibility, and inbox safety\n  experience:scan <file>               Scan a file for secrets/PII-like content\n  experience:sanitize <file> [--output <path>]\n  experience:ingest <file> [--output <path>]\n\nDecision Council (Phase 6):\n  council:create --title <t> --question <q> --type <type> --impact <LOW|MEDIUM|HIGH> --reversibility <LOW|MEDIUM|HIGH> --option <a> --option <b>\n  council:status [DEC-####]            List or show council workspace status\n  council:validate DEC-####            Validate a council workspace\n  council:prepare-codex DEC-####       Assemble and secret-scan the Codex advisory packet\n  council:record DEC-#### --decision <option> [--human-approved --approved-by human]\n\nCodex Optional Advisor (Phase 7):\n  codex:check                          Detect local Codex CLI capability\n  codex:consult DEC-####               Run fail-open structured external review when usable\n\nNotes:\n  - Promotion requires a PROMOTE recommendation, verifier PASS, complete incubation artifacts, and explicit human approval.\n  - Promoted repositories start at DISCOVERY / G1_PROBLEM with build.allowed=false and release.allowed=false.\n  - Promoted repositories are PRIVATE by default. PROMOTE does not imply PUBLIC and does not create a hosting remote.\n  - PUBLIC requires explicit --human-approved and does not call GitHub/Origin.\n  - RAW experience cannot be ingested. Sanitized experience is local-only (LOCAL_SANITIZED; publication_allowed: false) and must not be git-tracked. Legacy REPOSITORY_SAFE / EXP-SAFE-* files remain readable locally; ingest is read-only for them and must not write new copies.\n  - Promotion never overwrites an existing destination and refuses destinations inside the Product OS repository.\n  - Git is initialized on main by default; use --skip-git-init only intentionally.\n  - Codex is optional. Any advisor failure continues the internal Cursor council.\n  - council:record never changes stage, build.allowed, or release.allowed.\n`);
 }
 
 const command = process.argv[2] ?? 'help';

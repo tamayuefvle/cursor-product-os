@@ -3,3 +3,15 @@ node_modules/
 *.log
 .DS_Store
 .product/runtime/
+# Local secrets / connector credentials
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+*.credentials.json
+# RAW experience never enters Git
+.product/experience-raw/**
+!.product/experience-raw/README.md
+.product/lab/experience-raw/**
+!.product/lab/experience-raw/README.md

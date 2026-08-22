@@ -4,8 +4,8 @@ These command hooks are committed with the repository and are designed to work i
 
 ## Guardrails
 
-- `preToolUse` → `governance-guard.mjs`: blocks direct Agent Write/Delete operations on protected governance files. Use Product OS CLI workflows instead.
-- `beforeShellExecution` → `shell-guard.mjs`: hard-denies catastrophic commands and requires explicit approval for destructive or externally consequential commands.
+- `preToolUse` → `governance-guard.mjs`: blocks direct Agent Write/Delete operations on protected governance files, including `.product/visibility.yaml` and `.product/constitution.yaml`. Use Product OS CLI workflows instead.
+- `beforeShellExecution` → `shell-guard.mjs`: hard-denies catastrophic commands and PUBLIC hosting-visibility changes; requires explicit approval for destructive or externally consequential commands.
 - `afterFileEdit` → `validate-state.mjs`: runs Product OS validation when governance files are edited.
 - `afterFileEdit` → `validate-artifact.mjs`: checks important product artifacts against `.product/artifact-policy.json`.
 - `afterShellExecution` → `validate-state.mjs --after-shell`: revalidates governance after Product OS CLI commands.

@@ -5,6 +5,8 @@ const PROTECTED = new Set([
   '.product/gates.yaml',
   '.product/council-policy.yaml',
   '.product/artifact-policy.json',
+  '.product/constitution.yaml',
+  '.product/visibility.yaml',
   '.cursor/hooks.json',
 ]);
 

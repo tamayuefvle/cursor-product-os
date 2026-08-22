@@ -37,6 +37,8 @@
 - [ ] `.product/state.yaml` says `DISCOVERY` and `G1_PROBLEM`.
 - [ ] `build.allowed` remains `false`.
 - [ ] `release.allowed` remains `false`.
+- [ ] `.product/visibility.yaml` is PRIVATE and `public_allowed` is false.
+- [ ] No GitHub/Origin remote was created and visibility was not set PUBLIC.
 - [ ] Product repository has its own `AGENTS.md`, Rules, Subagents, Skills, Hooks, schemas, and CLI.
 - [ ] Working artifacts show promotion provenance.
 - [ ] Product-level discovery continues instead of treating incubation as final validation.

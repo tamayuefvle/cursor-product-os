@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Repository Visibility Boundary",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "repository_kind",
+    "default_visibility",
+    "current_visibility",
+    "public_allowed",
+    "promotion_implies_public",
+    "public_requires_human_approval",
+    "ai_may_set_public",
+    "public_approval"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "repository_kind": { "enum": ["PRODUCT_OS", "PRODUCT"] },
+    "default_visibility": { "enum": ["PRIVATE", "PUBLIC_ALLOWED"] },
+    "current_visibility": { "enum": ["PRIVATE", "PUBLIC", "UNDECLARED"] },
+    "public_allowed": { "type": "boolean" },
+    "promotion_implies_public": { "const": false },
+    "public_requires_human_approval": { "type": "boolean" },
+    "ai_may_set_public": { "const": false },
+    "public_approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "approved_by", "approved_at", "decision_id"],
+      "properties": {
+        "status": { "enum": ["PENDING", "APPROVED"] },
+        "approved_by": { "type": ["string", "null"], "minLength": 1 },
+        "approved_at": { "type": ["string", "null"], "minLength": 1 },
+        "decision_id": {
+          "type": ["string", "null"],
+          "pattern": "^DEC-[0-9]{4,}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "repository_kind": { "const": "PRODUCT" } },
+        "required": ["repository_kind"]
+      },
+      "then": {
+        "properties": {
+          "default_visibility": { "const": "PRIVATE" },
+          "public_requires_human_approval": { "const": true }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "repository_kind": { "const": "PRODUCT" },
+          "current_visibility": { "const": "PUBLIC" }
+        },
+        "required": ["repository_kind", "current_visibility"]
+      },
+      "then": {
+        "properties": {
+          "public_allowed": { "const": true },
+          "public_approval": {
+            "type": "object",
+            "properties": { "status": { "const": "APPROVED" } }
+          }
+        }
+      }
+    }
+  ]
+}

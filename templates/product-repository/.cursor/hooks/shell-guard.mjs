@@ -9,10 +9,14 @@ const denyRules = [
   ['raw device overwrite', /\bdd\b[^\n]*\bof=\/dev\//i],
   ['fork bomb', /:\s*\(\s*\)\s*\{\s*:\s*\|\s*:\s*&\s*\}\s*;\s*:/],
   ['system power command', /(?:^|[;&|]\s*)(?:shutdown|poweroff|reboot)\b/i],
+  ['public repository visibility change', /(?:\bgh\b|\borigin\b)[^\n]*(?:--public\b|--visibility\s+public\b|\bvisibility\s+public\b)/i],
+  ['GitHub repository create without explicit private', /\bgh\s+repo\s+create\b(?![^\n]*--(?:private|internal))/i],
 ];
 
 const askRules = [
   ['human-gated Product OS promotion', /(?:npm\s+run\s+po\b[^\n]*\bpromote\b|npm\s+run\s+product:promote\b|node\s+scripts\/product-os\.mjs\s+promote\b)/i],
+  ['human-gated Product OS public visibility', /(?:npm\s+run\s+po\b[^\n]*\bvisibility:set-public\b|node\s+scripts\/product-os\.mjs\s+visibility:set-public\b)/i],
+  ['GitHub/Origin repository create or visibility change', /\b(?:gh\s+repo\s+(?:create|edit|visibility)|origin\s+repo(?:s)?\s+create)\b/i],
   ['recursive deletion', /(?:^|[;&|]\s*)rm\s+[^\n]*-[^\n]*r/i],
   ['discard Git working tree', /\bgit\s+(?:reset\s+--hard|clean\s+-[^\s]*f|checkout\s+--\s+\.|restore\s+(?:--worktree\s+)?\.)\b/i],
   ['force Git push', /\bgit\s+push\b[^\n]*(?:--force(?:-with-lease)?|\s-f(?:\s|$))/i],
@@ -24,7 +28,7 @@ const askRules = [
   ['production deploy or publish', /\b(?:vercel\b[^\n]*--prod|netlify\s+deploy\b[^\n]*--prod|firebase\s+deploy\b|npm\s+publish\b|pnpm\s+publish\b|yarn\s+npm\s+publish\b|gh\s+release\s+create\b|terraform\s+apply\b|kubectl\s+apply\b)/i],
 ];
 
-const protectedMutation = /(?:\.product\/(?:state\.yaml|gates\.yaml|council-policy\.yaml|artifact-policy\.json)|\.cursor\/hooks\.json)/i;
+const protectedMutation = /(?:\.product\/(?:state\.yaml|gates\.yaml|council-policy\.yaml|artifact-policy\.json|constitution\.yaml|visibility\.yaml)|\.cursor\/hooks\.json)/i;
 const shellWrite = /(?:>>?|\btee\b|\bsed\s+-i\b|\bperl\s+-pi\b|\brm\b|\bmv\b|\bcp\b)/i;
 if (protectedMutation.test(command) && shellWrite.test(command) && !/scripts\/product-os\.mjs|npm\s+run\s+po\b/.test(command)) {
   emit({

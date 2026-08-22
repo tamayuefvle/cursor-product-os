@@ -189,6 +189,12 @@ test('Phase 10 full lifecycle: idea -> council -> Codex -> human decision -> pro
     assert.equal(existsSync(resolve(product, 'product/00-origin/incubator/idea.yaml')), true);
     assert.equal(existsSync(resolve(product, 'incubator')), false, 'A promoted Product Repository must not become another Incubator');
 
+    const visibility = YAML.parse(readFileSync(resolve(product, '.product/visibility.yaml'), 'utf8'));
+    assert.equal(visibility.current_visibility, 'PRIVATE');
+    assert.equal(visibility.public_allowed, false);
+    assert.equal(visibility.promotion_implies_public, false);
+    assert.match(promoted, /Remote:\s+not created/);
+
     const promotedDecisionName = basename(origin.decision_artifact.path);
     assert.match(promotedDecisionName, new RegExp(`^${councilId}-`));
     const agentFiles = readdirSync(resolve(product, '.cursor/agents')).filter((name) => name.endsWith('.md') && name !== 'README.md');

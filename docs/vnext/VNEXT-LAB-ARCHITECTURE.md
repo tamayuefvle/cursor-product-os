@@ -1136,7 +1136,8 @@ Mandatory controls:
 - runtime version;
 - Capability registry/config;
 - Lab namespace;
-- baseline regression suite.
+- baseline regression suite;
+- Privacy & Repository Boundary (PUBLIC-operable Product OS, PRIVATE Product Repositories, PROMOTE ≠ PUBLIC, experience sanitization gate).
 
 ### Phase 12 — Adaptive Reasoning
 

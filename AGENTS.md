@@ -60,6 +60,14 @@ The following transitions require explicit human approval:
 
 You may recommend one of these states, but you may not finalize it without human approval.
 
+Repository visibility is a separate human boundary from those stage transitions:
+
+- Product Repositories are PRIVATE by default.
+- `PROMOTE` does not make a repository PUBLIC.
+- AI must not change Product Repository visibility to PUBLIC.
+- PUBLIC requires explicit human approval via `npm run po -- visibility:set-public --human-approved --approved-by <human>`.
+- RAW experience, secrets, PII, and client data must not be committed to a public-operable Product OS path.
+
 ## Delegation model
 
 The main Agent remains the only Product Orchestrator and durable state writer. Delegate isolated analysis to the project subagents under `.cursor/agents/`:

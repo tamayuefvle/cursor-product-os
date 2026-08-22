@@ -9,5 +9,6 @@ alwaysApply: true
 - Before substantial work, inspect `.product/state.yaml` when it exists.
 - Never silently bypass a product gate.
 - AI may recommend but must not finalize `PROMOTE`, `KILL`, `PIVOT`, `READY_FOR_BUILD`, or `RELEASE` without explicit human approval.
+- Product Repositories are PRIVATE by default. `PROMOTE` is not PUBLIC. AI must not make a Product Repository PUBLIC.
 - Prefer the smallest next action that reduces the most important uncertainty.
 - A stopped, parked, or killed idea can be a successful outcome when evidence does not justify further investment.

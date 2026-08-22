@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -97,9 +97,15 @@ test('experience scan/sanitize/ingest keep RAW secrets and PII out of the inbox'
 
     const sanitized = run(temp, ['experience:sanitize', rawPath]);
     assert.match(sanitized, /SANITIZE OK/);
-    const safePath = resolve(temp, '.product/lab/experience-inbox/EXP-SAFE-client-note.md');
+    const inboxFiles = readdirSync(resolve(temp, '.product/lab/experience-inbox')).filter((name) => name.startsWith('EXP-SAFE-'));
+    assert.equal(inboxFiles.length, 1);
+    assert.match(inboxFiles[0], /^EXP-SAFE-[0-9a-f]{32}\.md$/);
+    const safePath = resolve(temp, '.product/lab/experience-inbox', inboxFiles[0]);
     const safe = readFileSync(safePath, 'utf8');
     assert.match(safe, /status: REPOSITORY_SAFE/);
+    assert.match(safe, /source_id: [0-9a-f]{32}/);
+    assert.doesNotMatch(safe, /source_basename/);
+    assert.doesNotMatch(safe, /client-note/);
     assert.doesNotMatch(safe, /jane\.doe@clientcorp\.com/);
     assert.doesNotMatch(safe, /hunter2secret/);
     assert.doesNotMatch(safe, /\/home\/owner\//);
@@ -112,6 +118,70 @@ test('experience scan/sanitize/ingest keep RAW secrets and PII out of the inbox'
 
     const clean = run(temp, ['experience:scan', resolve(SOURCE_ROOT, '.env.example')]);
     assert.match(clean, /SCAN CLEAN/);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
+test('sanitize/ingest do not persist RAW filenames or client identifiers into tracked artifacts', () => {
+  const temp = mkdtempSync(join(tmpdir(), 'product-os-experience-name-'));
+  try {
+    mkdirSync(resolve(temp, '.product/lab/experience-raw'), { recursive: true });
+    mkdirSync(resolve(temp, '.product/lab/experience-inbox'), { recursive: true });
+    mkdirSync(resolve(temp, 'schemas'), { recursive: true });
+    writeFileSync(resolve(temp, '.product/visibility.yaml'), readFileSync(resolve(SOURCE_ROOT, '.product/visibility.yaml')));
+    writeFileSync(resolve(temp, 'schemas/visibility.schema.json'), readFileSync(resolve(SOURCE_ROOT, 'schemas/visibility.schema.json')));
+    writeFileSync(resolve(temp, '.gitignore'), readFileSync(resolve(SOURCE_ROOT, '.gitignore')));
+
+    const rawName = 'Acme-Corp-jane.doe@clientcorp.com-interview.md';
+    const rawPath = resolve(temp, '.product/lab/experience-raw', rawName);
+    writeFileSync(rawPath, [
+      '# RAW interview',
+      'Contact jane.doe@clientcorp.com about client data.',
+      'password: hunter2secret',
+      'Notes at /home/owner/acme-notes/interview.md',
+      'Generalized lesson: agents should not copy private customer records into the public OS.',
+      '',
+    ].join('\n'), 'utf8');
+
+    const sanitized = run(temp, ['experience:sanitize', rawPath]);
+    assert.match(sanitized, /SANITIZE OK/);
+
+    const ingest = spawnCli(temp, ['experience:ingest', rawPath]);
+    assert.equal(ingest.status, 0, ingest.stderr);
+    assert.match(`${ingest.stdout}\n${ingest.stderr}`, /INGEST admitted sanitized experience; RAW file was not copied/);
+
+    const inboxDir = resolve(temp, '.product/lab/experience-inbox');
+    const tracked = readdirSync(inboxDir).filter((name) => name !== 'README.md');
+    assert.ok(tracked.length >= 1);
+    for (const name of tracked) {
+      assert.match(name, /^EXP-SAFE-[0-9a-f]{32}\.md$/);
+      assert.doesNotMatch(name, /Acme/i);
+      assert.doesNotMatch(name, /jane/i);
+      assert.doesNotMatch(name, /clientcorp/i);
+      const artifact = readFileSync(resolve(inboxDir, name), 'utf8');
+      assert.match(artifact, /status: REPOSITORY_SAFE/);
+      assert.doesNotMatch(artifact, /source_basename/);
+      assert.doesNotMatch(artifact, /Acme-Corp-jane\.doe@clientcorp\.com-interview\.md/);
+      assert.doesNotMatch(artifact, /jane\.doe@clientcorp\.com/);
+      assert.doesNotMatch(artifact, /hunter2secret/);
+      assert.doesNotMatch(artifact, /\/home\/owner\//);
+    }
+
+    assert.match(readFileSync(rawPath, 'utf8'), /jane\.doe@clientcorp\.com/);
+    const mapDir = resolve(temp, '.product/lab/experience-raw/.local-map');
+    const maps = readdirSync(mapDir);
+    assert.ok(maps.length >= 1);
+    const map = readFileSync(resolve(mapDir, maps[0]), 'utf8');
+    assert.match(map, /raw_basename: Acme-Corp-jane\.doe@clientcorp\.com-interview\.md/);
+
+    const check = run(temp, ['privacy:check']);
+    assert.match(check, /Privacy boundary: OK/);
+
+    writeFileSync(resolve(inboxDir, 'EXP-SAFE-Acme-Corp-jane-doe-interview.md'), '---\nstatus: REPOSITORY_SAFE\n---\n\n# leak\n', 'utf8');
+    const leaked = spawnCli(temp, ['privacy:check']);
+    assert.notEqual(leaked.status, 0);
+    assert.match(`${leaked.stdout}\n${leaked.stderr}`, /inbox filename must be an opaque/);
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }

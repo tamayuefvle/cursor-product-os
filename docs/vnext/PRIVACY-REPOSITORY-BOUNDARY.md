@@ -57,7 +57,8 @@ Private Product (PRIVATE)
         ↓
    po experience:sanitize   (redact secrets/PII-like; require remaining findings = 0)
         ↓
-   REPOSITORY_SAFE artifact
+   REPOSITORY_SAFE artifact (opaque source_id / EXP-SAFE-<32-hex>.md; no RAW basename)
+   local RAW filename map stays in gitignored experience-raw/.local-map/
         ↓
    Product OS inbox         .product/lab/experience-inbox/   (git-tracked)
         ↓

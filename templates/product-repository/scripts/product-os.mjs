@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import {
   cpSync,
   existsSync,
@@ -1397,6 +1397,13 @@ function privacyCheck() {
     for (const name of readdirSync(inbox)) {
       if (name === 'README.md' || !name.endsWith('.md')) continue;
       const path = resolve(inbox, name);
+      const nameFindings = privacyMatches(name);
+      if (nameFindings.length) errors.push(`inbox filename is not repository-safe: ${name} (${nameFindings.map((f) => f.type).join(', ')})`);
+      if (!isOpaqueSafeFilename(name)) errors.push(`inbox filename must be an opaque EXP-SAFE-<32-hex>.md: ${name}`);
+      const parsed = parseFrontmatter(path);
+      if (parsed.data && Object.hasOwn(parsed.data, 'source_basename')) {
+        errors.push(`inbox artifact must not store RAW basename: ${name}`);
+      }
       const findings = privacyMatches(readFileSync(path, 'utf8'));
       if (findings.length) errors.push(`inbox is not repository-safe: ${name} (${findings.map((f) => f.type).join(', ')})`);
     }
@@ -1425,12 +1432,36 @@ function experienceScan(targetPath) {
   return { ok: true, findings: [] };
 }
 
-function repositorySafeDocument(sourcePath, body, redactions) {
+function newExperienceSourceId() {
+  return randomBytes(16).toString('hex');
+}
+
+function opaqueSafeFilename(sourceId) {
+  return `EXP-SAFE-${sourceId}.md`;
+}
+
+function isOpaqueSafeFilename(name) {
+  return /^EXP-SAFE-[0-9a-f]{32}\.md$/.test(name);
+}
+
+function writeLocalSourceMap(sourceId, rawPath) {
+  const { raw } = experienceDirs();
+  const mapDir = resolve(raw, '.local-map');
+  mkdirSync(mapDir, { recursive: true });
+  writeYaml(resolve(mapDir, `${sourceId}.yaml`), {
+    source_id: sourceId,
+    raw_basename: basename(rawPath),
+    raw_relpath: relative(ROOT, rawPath).replaceAll('\\', '/'),
+    recorded_at: nowIso(),
+  });
+}
+
+function repositorySafeDocument(sourceId, body, redactions) {
   const metadata = {
     schema_version: 1,
     status: 'REPOSITORY_SAFE',
     classification: 'GENERALIZED',
-    source_basename: basename(sourcePath),
+    source_id: sourceId,
     scanned_at: nowIso(),
     findings: [],
     redactions,
@@ -1438,17 +1469,23 @@ function repositorySafeDocument(sourcePath, body, redactions) {
   return `---\n${YAML.stringify(metadata, { lineWidth: 0 }).trimEnd()}\n---\n\n# Repository-safe experience\n\nThis artifact passed Product OS privacy scan after redaction and generalization. It is not RAW experience and must not reintroduce credentials or private customer records.\n\n${body.trim()}\n`;
 }
 
-function defaultSafeOutputPath(sourcePath) {
+function resolveSafeOutputPath(flags, sourceId) {
   const { inbox } = experienceDirs();
   mkdirSync(inbox, { recursive: true });
-  const slug = slugify(basename(sourcePath, '.md')) || 'experience';
-  let dest = resolve(inbox, `EXP-SAFE-${slug}.md`);
-  let n = 2;
-  while (existsSync(dest)) {
-    dest = resolve(inbox, `EXP-SAFE-${slug}-${n}.md`);
-    n += 1;
+  const opaque = resolve(inbox, opaqueSafeFilename(sourceId));
+  if (typeof flags.output !== 'string') return opaque;
+  const outputPath = resolve(flags.output);
+  const outputName = basename(outputPath);
+  if (privacyMatches(outputName).length) {
+    throw new Error(`refusing output filename that matches privacy patterns: ${outputName}`);
   }
-  return dest;
+  if (pathIsInside(inbox, outputPath)) {
+    if (!isOpaqueSafeFilename(outputName)) {
+      throw new Error('inbox output filename must be an opaque EXP-SAFE-<32-hex>.md and must not be derived from a RAW filename');
+    }
+    return outputPath;
+  }
+  return outputPath;
 }
 
 function experienceSanitize(targetPath, flags = {}) {
@@ -1464,27 +1501,29 @@ function experienceSanitize(targetPath, flags = {}) {
     process.exitCode = 1;
     return { ok: false };
   }
-  const outputPath = typeof flags.output === 'string' ? resolve(flags.output) : defaultSafeOutputPath(path);
+  const sourceId = newExperienceSourceId();
+  const outputPath = resolveSafeOutputPath(flags, sourceId);
   const { raw: rawDir } = experienceDirs();
   if (pathIsInside(rawDir, outputPath) && relative(rawDir, outputPath) !== '') {
     throw new Error('refusing to write repository-safe output into experience-raw');
   }
   mkdirSync(dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, repositorySafeDocument(path, redacted.text, redacted.redactions), 'utf8');
+  writeFileSync(outputPath, repositorySafeDocument(sourceId, redacted.text, redacted.redactions), 'utf8');
   const verify = privacyMatches(readFileSync(outputPath, 'utf8'));
   if (verify.length) {
     rmSync(outputPath, { force: true });
     throw new Error(`refusing to keep output that still matches privacy patterns: ${verify.map((f) => f.type).join(', ')}`);
   }
+  writeLocalSourceMap(sourceId, path);
   console.log(`SANITIZE OK ${relative(ROOT, outputPath)}`);
-  return { ok: true, outputPath };
+  return { ok: true, outputPath, sourceId };
 }
 
 function experienceIngest(targetPath, flags = {}) {
   if (!targetPath) throw new Error('experience:ingest requires a file path');
   const path = resolve(targetPath);
   if (!existsSync(path)) throw new Error(`file not found: ${path}`);
-  const { raw: rawDir, inbox } = experienceDirs();
+  const { raw: rawDir } = experienceDirs();
   const parsed = parseFrontmatter(path);
   const alreadySafe = parsed.error == null && parsed.data?.status === 'REPOSITORY_SAFE';
   if (pathIsInside(rawDir, path) && !alreadySafe) {
@@ -1501,12 +1540,18 @@ function experienceIngest(targetPath, flags = {}) {
     return;
   }
   if (!alreadySafe) {
-    const sanitized = experienceSanitize(path, { output: flags.output });
+    const sanitized = experienceSanitize(path, flags);
     if (!sanitized?.ok) throw new Error('experience ingest refused unsanitized input');
     console.log('INGEST admitted after sanitize.');
     return;
   }
-  const dest = typeof flags.output === 'string' ? resolve(flags.output) : resolve(inbox, basename(path).startsWith('EXP-SAFE-') ? basename(path) : `EXP-SAFE-${basename(path)}`);
+  if (parsed.data && Object.hasOwn(parsed.data, 'source_basename')) {
+    throw new Error('INGEST BLOCKED: repository-safe artifacts must not carry RAW basename');
+  }
+  const sourceId = typeof parsed.data?.source_id === 'string' && /^[0-9a-f]{32}$/.test(parsed.data.source_id)
+    ? parsed.data.source_id
+    : newExperienceSourceId();
+  const dest = resolveSafeOutputPath(flags, sourceId);
   mkdirSync(dirname(dest), { recursive: true });
   if (resolve(path) !== dest) writeFileSync(dest, readFileSync(path, 'utf8'), 'utf8');
   console.log(`INGEST OK ${relative(ROOT, dest)}`);

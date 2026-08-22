@@ -2,7 +2,9 @@
 
 Git-tracked Lab inbox for **repository-safe** experience only.
 
-Admission rule: `status: REPOSITORY_SAFE` after scan and redaction/generalization. RAW files, secrets, PII, and client data are rejected.
+Admission rule: `status: REPOSITORY_SAFE` after scan and redaction/generalization. RAW files, secrets, PII, client data, and RAW filenames are rejected.
+
+Tracked artifacts use an opaque `source_id` and filename `EXP-SAFE-<32-hex>.md`. They must not store the RAW basename. Local RAW filename mapping, if needed, stays only under gitignored `experience-raw/`.
 
 Use:
 

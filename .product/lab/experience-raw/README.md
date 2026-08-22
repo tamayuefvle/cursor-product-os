@@ -9,3 +9,5 @@ Do not commit:
 - client identifiers, customer records, or private repository dumps.
 
 Pipeline: RAW → `po experience:scan` → `po experience:sanitize` → repository-safe inbox. Unsanitized files must never be copied into `.product/lab/experience-inbox/` or a public Product OS path.
+
+Optional local mapping (RAW basename ↔ opaque `source_id`) may live under `.local-map/` here. That mapping is gitignored and must not be copied into Product OS inbox paths.

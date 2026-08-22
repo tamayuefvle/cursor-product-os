@@ -15,3 +15,8 @@ credentials.json
 !.product/lab/experience-raw/README.md
 .product/experience-raw/**
 !.product/experience-raw/README.md
+# Sanitized experience is local-only. Pattern redaction is not publication permission.
+.product/lab/experience-inbox/**
+!.product/lab/experience-inbox/README.md
+.product/experience-inbox/**
+!.product/experience-inbox/README.md

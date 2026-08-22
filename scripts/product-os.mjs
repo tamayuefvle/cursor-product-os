@@ -369,8 +369,62 @@ function requiredGitignoreChecks(text) {
     ['dotenv', /^\s*\.env(\.\*)?\s*$/m.test(text)],
     ['capabilities-local', text.includes('.product/capabilities.local.json')],
     ['experience-raw', text.includes('experience-raw')],
+    ['experience-inbox', text.includes('experience-inbox')],
     ['credentials', /credentials\.json|\.pem/.test(text)],
   ];
+}
+
+function isGitWorkTree() {
+  try {
+    execFileSync('git', ['rev-parse', '--is-inside-work-tree'], {
+      cwd: ROOT,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      timeout: 5000,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function trackedExperienceBodies() {
+  if (!isGitWorkTree()) return { git: false, files: [] };
+  try {
+    const output = execFileSync(
+      'git',
+      ['ls-files', '-z', '--', '.product/lab/experience-inbox', '.product/experience-inbox'],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 10000 },
+    );
+    const files = String(output || '')
+      .split('\0')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((rel) => basename(rel) !== 'README.md');
+    return { git: true, files };
+  } catch (error) {
+    return { git: true, files: [], error: error.message || String(error) };
+  }
+}
+
+function isLegacyExperienceFilename(name) {
+  return /^EXP-SAFE-[0-9a-f]{32}\.md$/.test(name);
+}
+
+function isLocalExperienceFilename(name) {
+  return /^EXP-LOCAL-[0-9a-f]{32}\.md$/.test(name);
+}
+
+function isAdmittedExperienceFilename(name) {
+  return isLocalExperienceFilename(name) || isLegacyExperienceFilename(name);
+}
+
+function isAdmittedExperienceStatus(status) {
+  return status === 'LOCAL_SANITIZED' || status === 'REPOSITORY_SAFE';
+}
+
+function isLegacyExperienceArtifact(parsed, name) {
+  return parsed?.data?.status === 'REPOSITORY_SAFE' || isLegacyExperienceFilename(name);
 }
 
 function npmPackageName(value, fallback) {
@@ -1392,20 +1446,36 @@ function privacyCheck() {
     errors.push(error.message);
   }
 
+  const tracked = trackedExperienceBodies();
+  if (tracked.git) {
+    if (tracked.error) errors.push(`could not list tracked experience files: ${tracked.error}`);
+    for (const rel of tracked.files) {
+      errors.push(`experience body is git-tracked (local-only; publication_allowed is false): ${rel}`);
+    }
+  }
+
   const { inbox, raw } = experienceDirs();
   if (existsSync(inbox)) {
     for (const name of readdirSync(inbox)) {
       if (name === 'README.md' || !name.endsWith('.md')) continue;
       const path = resolve(inbox, name);
       const nameFindings = privacyMatches(name);
-      if (nameFindings.length) errors.push(`inbox filename is not repository-safe: ${name} (${nameFindings.map((f) => f.type).join(', ')})`);
-      if (!isOpaqueSafeFilename(name)) errors.push(`inbox filename must be an opaque EXP-SAFE-<32-hex>.md: ${name}`);
+      if (nameFindings.length) errors.push(`inbox filename is not local-sanitized: ${name} (${nameFindings.map((f) => f.type).join(', ')})`);
+      if (!isAdmittedExperienceFilename(name)) {
+        errors.push(`inbox filename must be EXP-LOCAL-<32-hex>.md (legacy EXP-SAFE-<32-hex>.md is read-only): ${name}`);
+      }
       const parsed = parseFrontmatter(path);
       if (parsed.data && Object.hasOwn(parsed.data, 'source_basename')) {
         errors.push(`inbox artifact must not store RAW basename: ${name}`);
       }
+      if (parsed.data?.status && !isAdmittedExperienceStatus(parsed.data.status)) {
+        errors.push(`inbox status must be LOCAL_SANITIZED (legacy REPOSITORY_SAFE is read-only): ${name}`);
+      }
+      if (isLocalExperienceFilename(name) && parsed.data?.publication_allowed !== false) {
+        errors.push(`LOCAL_SANITIZED artifacts must set publication_allowed: false: ${name}`);
+      }
       const findings = privacyMatches(readFileSync(path, 'utf8'));
-      if (findings.length) errors.push(`inbox is not repository-safe: ${name} (${findings.map((f) => f.type).join(', ')})`);
+      if (findings.length) errors.push(`inbox is not pattern-redacted: ${name} (${findings.map((f) => f.type).join(', ')})`);
     }
   }
   if (existsSync(raw)) warnings.push(`RAW experience directory present at ${relative(ROOT, raw)} (must stay gitignored)`);
@@ -1436,12 +1506,8 @@ function newExperienceSourceId() {
   return randomBytes(16).toString('hex');
 }
 
-function opaqueSafeFilename(sourceId) {
-  return `EXP-SAFE-${sourceId}.md`;
-}
-
-function isOpaqueSafeFilename(name) {
-  return /^EXP-SAFE-[0-9a-f]{32}\.md$/.test(name);
+function opaqueLocalFilename(sourceId) {
+  return `EXP-LOCAL-${sourceId}.md`;
 }
 
 function writeLocalSourceMap(sourceId, rawPath) {
@@ -1456,23 +1522,24 @@ function writeLocalSourceMap(sourceId, rawPath) {
   });
 }
 
-function repositorySafeDocument(sourceId, body, redactions) {
+function localSanitizedDocument(sourceId, body, redactions) {
   const metadata = {
     schema_version: 1,
-    status: 'REPOSITORY_SAFE',
-    classification: 'GENERALIZED',
+    status: 'LOCAL_SANITIZED',
+    classification: 'PATTERN_REDACTED',
+    publication_allowed: false,
     source_id: sourceId,
     scanned_at: nowIso(),
     findings: [],
     redactions,
   };
-  return `---\n${YAML.stringify(metadata, { lineWidth: 0 }).trimEnd()}\n---\n\n# Repository-safe experience\n\nThis artifact passed Product OS privacy scan after redaction and generalization. It is not RAW experience and must not reintroduce credentials or private customer records.\n\n${body.trim()}\n`;
+  return `---\n${YAML.stringify(metadata, { lineWidth: 0 }).trimEnd()}\n---\n\n# Local sanitized experience\n\nThis artifact passed Product OS pattern redaction. It is local-only. Pattern-clean is not publication permission. Do not commit it to Public Product OS.\n\n${body.trim()}\n`;
 }
 
-function resolveSafeOutputPath(flags, sourceId) {
+function resolveLocalOutputPath(flags, sourceId) {
   const { inbox } = experienceDirs();
   mkdirSync(inbox, { recursive: true });
-  const opaque = resolve(inbox, opaqueSafeFilename(sourceId));
+  const opaque = resolve(inbox, opaqueLocalFilename(sourceId));
   if (typeof flags.output !== 'string') return opaque;
   const outputPath = resolve(flags.output);
   const outputName = basename(outputPath);
@@ -1480,8 +1547,8 @@ function resolveSafeOutputPath(flags, sourceId) {
     throw new Error(`refusing output filename that matches privacy patterns: ${outputName}`);
   }
   if (pathIsInside(inbox, outputPath)) {
-    if (!isOpaqueSafeFilename(outputName)) {
-      throw new Error('inbox output filename must be an opaque EXP-SAFE-<32-hex>.md and must not be derived from a RAW filename');
+    if (!isLocalExperienceFilename(outputName)) {
+      throw new Error('inbox output filename must be an opaque EXP-LOCAL-<32-hex>.md and must not be derived from a RAW filename');
     }
     return outputPath;
   }
@@ -1502,13 +1569,13 @@ function experienceSanitize(targetPath, flags = {}) {
     return { ok: false };
   }
   const sourceId = newExperienceSourceId();
-  const outputPath = resolveSafeOutputPath(flags, sourceId);
+  const outputPath = resolveLocalOutputPath(flags, sourceId);
   const { raw: rawDir } = experienceDirs();
   if (pathIsInside(rawDir, outputPath) && relative(rawDir, outputPath) !== '') {
-    throw new Error('refusing to write repository-safe output into experience-raw');
+    throw new Error('refusing to write local-sanitized output into experience-raw');
   }
   mkdirSync(dirname(outputPath), { recursive: true });
-  writeFileSync(outputPath, repositorySafeDocument(sourceId, redacted.text, redacted.redactions), 'utf8');
+  writeFileSync(outputPath, localSanitizedDocument(sourceId, redacted.text, redacted.redactions), 'utf8');
   const verify = privacyMatches(readFileSync(outputPath, 'utf8'));
   if (verify.length) {
     rmSync(outputPath, { force: true });
@@ -1525,33 +1592,50 @@ function experienceIngest(targetPath, flags = {}) {
   if (!existsSync(path)) throw new Error(`file not found: ${path}`);
   const { raw: rawDir } = experienceDirs();
   const parsed = parseFrontmatter(path);
-  const alreadySafe = parsed.error == null && parsed.data?.status === 'REPOSITORY_SAFE';
-  if (pathIsInside(rawDir, path) && !alreadySafe) {
+  const alreadyAdmitted = parsed.error == null && isAdmittedExperienceStatus(parsed.data?.status);
+  if (alreadyAdmitted && isLegacyExperienceArtifact(parsed, basename(path))) {
+    const findings = privacyMatches(readFileSync(path, 'utf8'));
+    if (findings.length) {
+      console.error('INGEST BLOCKED: file is not pattern-redacted');
+      for (const finding of findings) console.error(`  - ${finding.type} (${finding.count})`);
+      process.exitCode = 1;
+      return;
+    }
+    if (parsed.data && Object.hasOwn(parsed.data, 'source_basename')) {
+      throw new Error('INGEST BLOCKED: local-sanitized artifacts must not carry RAW basename');
+    }
+    if (typeof flags.output === 'string' && resolve(flags.output) !== path) {
+      throw new Error('INGEST BLOCKED: legacy REPOSITORY_SAFE / EXP-SAFE-* ingest is read-only and must not write new output');
+    }
+    console.log(`INGEST OK (legacy read-only) ${relative(ROOT, path)}`);
+    return;
+  }
+  if (pathIsInside(rawDir, path) && !alreadyAdmitted) {
     const sanitized = experienceSanitize(path, flags);
     if (!sanitized?.ok) throw new Error('RAW experience was not admitted to the inbox');
-    console.log('INGEST admitted sanitized experience; RAW file was not copied.');
+    console.log('INGEST admitted local-sanitized experience; RAW file was not copied.');
     return;
   }
   const findings = privacyMatches(readFileSync(path, 'utf8'));
   if (findings.length) {
-    console.error('INGEST BLOCKED: file is not repository-safe');
+    console.error('INGEST BLOCKED: file is not pattern-redacted');
     for (const finding of findings) console.error(`  - ${finding.type} (${finding.count})`);
     process.exitCode = 1;
     return;
   }
-  if (!alreadySafe) {
+  if (!alreadyAdmitted) {
     const sanitized = experienceSanitize(path, flags);
     if (!sanitized?.ok) throw new Error('experience ingest refused unsanitized input');
     console.log('INGEST admitted after sanitize.');
     return;
   }
   if (parsed.data && Object.hasOwn(parsed.data, 'source_basename')) {
-    throw new Error('INGEST BLOCKED: repository-safe artifacts must not carry RAW basename');
+    throw new Error('INGEST BLOCKED: local-sanitized artifacts must not carry RAW basename');
   }
   const sourceId = typeof parsed.data?.source_id === 'string' && /^[0-9a-f]{32}$/.test(parsed.data.source_id)
     ? parsed.data.source_id
     : newExperienceSourceId();
-  const dest = resolveSafeOutputPath(flags, sourceId);
+  const dest = resolveLocalOutputPath(flags, sourceId);
   mkdirSync(dirname(dest), { recursive: true });
   if (resolve(path) !== dest) writeFileSync(dest, readFileSync(path, 'utf8'), 'utf8');
   console.log(`INGEST OK ${relative(ROOT, dest)}`);
@@ -1707,7 +1791,7 @@ function recordCouncilDecision(id, flags) {
 }
 
 function help() {
-  console.log(`Cursor Product OS CLI\n\nUsage:\n  npm run po -- <command> [args]\n\nFoundation:\n  doctor                              Check required and optional runtime capabilities\n  status                              Show current product state\n  validate                            Validate schemas, customization, incubator, councils, and decisions\n  gate                                Show current gate requirements\n  hooks:status                        Show latest Phase 8 runtime guardrail results\n\nIncubator & Promotion (Phase 9):\n  idea:new --title <t> [--user <u>] [--problem <p>] [--solution <s>]\n  idea:status [IDEA-####]              List or inspect incubator ideas\n  promote:check IDEA-#### [--destination <path>]\n  promote IDEA-#### --destination <outside-path> [--name <product>] --human-approved --approved-by <human> [--decision-id DEC-####] [--product-id <id>] [--skip-git-init]\n\nPrivacy & Repository Boundary:\n  visibility:status                    Show repository visibility policy\n  visibility:set-public --human-approved --approved-by <human> [--decision-id DEC-####]\n  privacy:check                        Check gitignore, visibility, and inbox safety\n  experience:scan <file>               Scan a file for secrets/PII-like content\n  experience:sanitize <file> [--output <path>]\n  experience:ingest <file> [--output <path>]\n\nDecision Council (Phase 6):\n  council:create --title <t> --question <q> --type <type> --impact <LOW|MEDIUM|HIGH> --reversibility <LOW|MEDIUM|HIGH> --option <a> --option <b>\n  council:status [DEC-####]            List or show council workspace status\n  council:validate DEC-####            Validate a council workspace\n  council:prepare-codex DEC-####       Assemble and secret-scan the Codex advisory packet\n  council:record DEC-#### --decision <option> [--human-approved --approved-by human]\n\nCodex Optional Advisor (Phase 7):\n  codex:check                          Detect local Codex CLI capability\n  codex:consult DEC-####               Run fail-open structured external review when usable\n\nNotes:\n  - Promotion requires a PROMOTE recommendation, verifier PASS, complete incubation artifacts, and explicit human approval.\n  - Promoted repositories start at DISCOVERY / G1_PROBLEM with build.allowed=false and release.allowed=false.\n  - Promoted repositories are PRIVATE by default. PROMOTE does not imply PUBLIC and does not create a hosting remote.\n  - PUBLIC requires explicit --human-approved and does not call GitHub/Origin.\n  - RAW experience cannot be ingested; only repository-safe artifacts may enter git-tracked inbox paths.\n  - Promotion never overwrites an existing destination and refuses destinations inside the Product OS repository.\n  - Git is initialized on main by default; use --skip-git-init only intentionally.\n  - Codex is optional. Any advisor failure continues the internal Cursor council.\n  - council:record never changes stage, build.allowed, or release.allowed.\n`);
+  console.log(`Cursor Product OS CLI\n\nUsage:\n  npm run po -- <command> [args]\n\nFoundation:\n  doctor                              Check required and optional runtime capabilities\n  status                              Show current product state\n  validate                            Validate schemas, customization, incubator, councils, and decisions\n  gate                                Show current gate requirements\n  hooks:status                        Show latest Phase 8 runtime guardrail results\n\nIncubator & Promotion (Phase 9):\n  idea:new --title <t> [--user <u>] [--problem <p>] [--solution <s>]\n  idea:status [IDEA-####]              List or inspect incubator ideas\n  promote:check IDEA-#### [--destination <path>]\n  promote IDEA-#### --destination <outside-path> [--name <product>] --human-approved --approved-by <human> [--decision-id DEC-####] [--product-id <id>] [--skip-git-init]\n\nPrivacy & Repository Boundary:\n  visibility:status                    Show repository visibility policy\n  visibility:set-public --human-approved --approved-by <human> [--decision-id DEC-####]\n  privacy:check                        Check gitignore, visibility, and inbox safety\n  experience:scan <file>               Scan a file for secrets/PII-like content\n  experience:sanitize <file> [--output <path>]\n  experience:ingest <file> [--output <path>]\n\nDecision Council (Phase 6):\n  council:create --title <t> --question <q> --type <type> --impact <LOW|MEDIUM|HIGH> --reversibility <LOW|MEDIUM|HIGH> --option <a> --option <b>\n  council:status [DEC-####]            List or show council workspace status\n  council:validate DEC-####            Validate a council workspace\n  council:prepare-codex DEC-####       Assemble and secret-scan the Codex advisory packet\n  council:record DEC-#### --decision <option> [--human-approved --approved-by human]\n\nCodex Optional Advisor (Phase 7):\n  codex:check                          Detect local Codex CLI capability\n  codex:consult DEC-####               Run fail-open structured external review when usable\n\nNotes:\n  - Promotion requires a PROMOTE recommendation, verifier PASS, complete incubation artifacts, and explicit human approval.\n  - Promoted repositories start at DISCOVERY / G1_PROBLEM with build.allowed=false and release.allowed=false.\n  - Promoted repositories are PRIVATE by default. PROMOTE does not imply PUBLIC and does not create a hosting remote.\n  - PUBLIC requires explicit --human-approved and does not call GitHub/Origin.\n  - RAW experience cannot be ingested. Sanitized experience is local-only (LOCAL_SANITIZED; publication_allowed: false) and must not be git-tracked. Legacy REPOSITORY_SAFE / EXP-SAFE-* files remain readable locally; ingest is read-only for them and must not write new copies.\n  - Promotion never overwrites an existing destination and refuses destinations inside the Product OS repository.\n  - Git is initialized on main by default; use --skip-git-init only intentionally.\n  - Codex is optional. Any advisor failure continues the internal Cursor council.\n  - council:record never changes stage, build.allowed, or release.allowed.\n`);
 }
 
 const command = process.argv[2] ?? 'help';
